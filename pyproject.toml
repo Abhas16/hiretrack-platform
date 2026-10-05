@@ -1,0 +1,48 @@
+# uv workspace root (virtual — not a package itself).
+# One lockfile (uv.lock) pins every Python dependency for all services.
+
+[tool.uv.workspace]
+members = ["libs/hiretrack_common", "services/api"]
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.1",
+    "httpx==0.28.1",
+    "testcontainers[postgres]==4.10.0",
+    "ruff==0.12.4",
+    "mypy==1.17.0",
+    "types-pyyaml==6.0.12.20260906",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "N"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["hiretrack_common", "hiretrack_api"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106", "S311"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = ["libs/hiretrack_common/src", "services/api/src"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-ra --import-mode=importlib"
+testpaths = ["libs/hiretrack_common/tests", "services/api/tests"]
+markers = ["integration: needs Docker (spins up Postgres with testcontainers)"]
+filterwarnings = [
+    "ignore::DeprecationWarning:testcontainers.*",
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",  # starlette internal
+]

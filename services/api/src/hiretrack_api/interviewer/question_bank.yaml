@@ -1,0 +1,262 @@
+# Built-in interview questions for the rule-based interviewer (LLM_PROVIDER=none).
+# Each key point is a short phrase; an answer "covers" it when it uses most of its key terms.
+
+docker:
+  - question: What is a multi-stage Docker build, and why would you use one?
+    key_points:
+      - Multiple FROM stages in one Dockerfile
+      - Build tools stay in the builder stage
+      - Copy only artifacts into the final runtime image
+      - Smaller image size and smaller attack surface
+  - question: What is the difference between CMD and ENTRYPOINT?
+    key_points:
+      - ENTRYPOINT defines the executable that always runs
+      - CMD provides default arguments that can be overridden
+      - docker run arguments replace CMD
+      - Exec form (JSON array) handles signals correctly
+  - question: How does Docker layer caching work, and how do you write a Dockerfile to benefit from it?
+    key_points:
+      - Each instruction creates a cached layer
+      - A changed layer invalidates all later layers
+      - Copy dependency files and install before copying source code
+      - Use a .dockerignore to keep the build context small
+  - question: Why should containers run as a non-root user?
+    key_points:
+      - Root in the container can become root on the host after an escape
+      - Least privilege limits damage from a compromise
+      - USER instruction with a fixed UID
+      - Kubernetes runAsNonRoot can enforce it
+
+kubernetes:
+  - question: What is the difference between a liveness probe and a readiness probe?
+    key_points:
+      - Liveness failure restarts the container
+      - Readiness failure removes the pod from Service endpoints
+      - Readiness can check dependencies; liveness should not
+      - A startup probe protects slow-starting apps
+  - question: What happens step by step when you run kubectl apply for a Deployment?
+    key_points:
+      - API server validates and stores the object in etcd
+      - Deployment controller creates a ReplicaSet
+      - Scheduler assigns pods to nodes
+      - Kubelet pulls the image and starts containers
+  - question: How does a rolling update work, and how do you roll back a bad release?
+    key_points:
+      - New ReplicaSet scales up while the old one scales down
+      - maxSurge and maxUnavailable control the pace
+      - Readiness probes gate traffic to new pods
+      - kubectl rollout undo returns to the previous revision
+  - question: What is a PodDisruptionBudget and when does it matter?
+    key_points:
+      - Limits how many pods can be voluntarily disrupted at once
+      - Protects availability during node drains and upgrades
+      - minAvailable or maxUnavailable setting
+      - Does not protect against involuntary failures like node crashes
+
+terraform:
+  - question: What is Terraform state, and why do teams store it remotely?
+    key_points:
+      - State maps configuration to real resources
+      - Remote backend such as S3 lets the team share one state
+      - Locking prevents two applies at the same time
+      - State can contain secrets so it must be encrypted and private
+  - question: What is the difference between a Terraform module and an environment?
+    key_points:
+      - A module is reusable code with inputs and outputs
+      - An environment instantiates modules with specific values
+      - Separate state per environment such as dev and prod
+      - Avoid copy-paste by reusing modules
+  - question: How do you handle a resource that was changed manually outside Terraform (drift)?
+    key_points:
+      - terraform plan shows the drift
+      - Decide whether to update code or revert the manual change
+      - terraform import brings existing resources under management
+      - Prevent drift by making all changes through code and CI
+  - question: How do you keep secrets out of Terraform code and state?
+    key_points:
+      - Never commit secrets in tfvars files
+      - Use a secrets manager such as SSM or Secrets Manager
+      - Generate passwords and store them directly in the secret store
+      - Mark outputs as sensitive and encrypt the state backend
+
+aws:
+  - question: Explain the difference between a public and a private subnet in a VPC.
+    key_points:
+      - Public subnet route table has a route to an internet gateway
+      - Private subnet has no direct inbound internet access
+      - NAT gateway gives private subnets outbound internet access
+      - Databases and nodes usually go in private subnets
+  - question: What is the difference between an IAM role and an IAM user?
+    key_points:
+      - A user has long-lived credentials
+      - A role is assumed and gives temporary credentials
+      - Services and workloads should use roles
+      - Trust policy controls who can assume the role
+  - question: How would you give a pod on EKS access to an S3 bucket without access keys?
+    key_points:
+      - Use EKS Pod Identity or IRSA
+      - Associate an IAM role with the service account
+      - The SDK picks up temporary credentials automatically
+      - Least privilege policy scoped to the bucket
+  - question: How do you keep AWS costs under control in a dev environment?
+    key_points:
+      - Budgets and billing alerts
+      - Tag resources for cost allocation
+      - Tear down or scale to zero when not in use
+      - Watch hidden costs such as NAT gateways and idle load balancers
+
+cicd:
+  - question: How does OIDC authentication from GitHub Actions to a cloud provider work?
+    key_points:
+      - GitHub issues a short-lived signed OIDC token
+      - The cloud trusts GitHub as an identity provider
+      - Trust policy checks the audience and subject claim
+      - No long-lived secrets are stored in GitHub
+  - question: Why should container images be tagged with the git commit SHA instead of latest?
+    key_points:
+      - Every image is traceable to exact source code
+      - Tags are immutable so deployments are reproducible
+      - Rollback means redeploying a previous SHA
+      - latest is ambiguous and can change silently
+  - question: How do you keep a CI pipeline fast in a monorepo?
+    key_points:
+      - Path filters run only jobs for changed services
+      - Cache dependencies keyed by lockfile hash
+      - Run jobs in parallel
+      - Cancel outdated runs with concurrency settings
+  - question: What is the difference between continuous delivery and continuous deployment?
+    key_points:
+      - Continuous delivery keeps every change releasable
+      - Production release needs a manual approval
+      - Continuous deployment releases automatically after checks pass
+      - Strong automated tests are required for both
+
+linux:
+  - question: A server is slow. How do you troubleshoot it?
+    key_points:
+      - Check CPU and load with top or uptime
+      - Check memory and swap with free
+      - Check disk space and IO with df and iostat
+      - Read logs with journalctl or files in /var/log
+  - question: What is the difference between a process and a thread?
+    key_points:
+      - A process has its own memory space
+      - Threads share the memory of their process
+      - Threads are lighter to create and switch
+      - A crash in one thread can bring down the whole process
+  - question: How do file permissions work in Linux?
+    key_points:
+      - Read, write and execute bits
+      - Owner, group and others
+      - chmod changes permissions and chown changes ownership
+      - Numeric notation such as 755 or 644
+  - question: What happens when you send SIGTERM versus SIGKILL to a process?
+    key_points:
+      - SIGTERM asks the process to shut down gracefully
+      - The process can catch SIGTERM and clean up
+      - SIGKILL cannot be caught and stops the process immediately
+      - Kubernetes sends SIGTERM then SIGKILL after the grace period
+
+networking:
+  - question: What happens when you type a URL into a browser and press enter?
+    key_points:
+      - DNS resolves the hostname to an IP address
+      - TCP connection and TLS handshake
+      - HTTP request is sent and the server responds
+      - Browser renders the HTML and loads other assets
+  - question: What is the difference between TCP and UDP?
+    key_points:
+      - TCP is connection oriented with a handshake
+      - TCP guarantees ordered and reliable delivery
+      - UDP is connectionless with no delivery guarantee
+      - UDP has lower overhead and suits DNS or streaming
+  - question: What is the difference between a Layer 4 and a Layer 7 load balancer?
+    key_points:
+      - Layer 4 routes by IP address and port
+      - Layer 7 understands HTTP such as paths and headers
+      - Layer 7 can do path based routing and TLS termination
+      - Network load balancer versus application load balancer
+  - question: How does DNS resolution work?
+    key_points:
+      - Resolver checks its cache first
+      - Queries root servers then TLD servers
+      - Authoritative name server returns the record
+      - TTL controls how long answers are cached
+
+observability:
+  - question: What is an SLO and what is an error budget?
+    key_points:
+      - SLI is the measured indicator such as availability
+      - SLO is the target for the SLI over a time window
+      - Error budget is the allowed failure such as 0.5 percent
+      - Spending the budget slows down risky releases
+  - question: Why use burn-rate alerts instead of a simple error-rate threshold?
+    key_points:
+      - Burn rate measures how fast the error budget is consumed
+      - Multi-window alerts catch fast and slow burns
+      - Fewer false alarms from short spikes
+      - Pages only when the SLO is really at risk
+  - question: What is the difference between metrics, logs and traces?
+    key_points:
+      - Metrics are numeric time series for trends and alerting
+      - Logs are detailed event records for debugging
+      - Traces follow a request across services
+      - Correlate them with a request ID or trace ID
+  - question: Describe how you would handle a production incident.
+    key_points:
+      - Acknowledge the alert and assess impact
+      - Communicate status to stakeholders
+      - Mitigate first such as rollback, then find the root cause
+      - Write a blameless postmortem with action items
+
+security:
+  - question: What does shift-left security mean in a CI/CD pipeline?
+    key_points:
+      - Find security issues early in development
+      - Scan dependencies and container images in CI
+      - Detect secrets in code before merge
+      - Fail the pipeline on critical findings
+  - question: What is an SBOM and why is it useful?
+    key_points:
+      - Software bill of materials lists all components and versions
+      - Helps find affected images when a new CVE appears
+      - Generated by tools such as Syft
+      - Supports supply chain security and compliance
+  - question: How do you manage secrets for applications running in Kubernetes?
+    key_points:
+      - Never bake secrets into images or commit them to Git
+      - Use an external secret store such as Secrets Manager or Vault
+      - Sync them with External Secrets Operator or a CSI driver
+      - Restrict access with RBAC and least privilege
+  - question: What is the principle of least privilege, with an example?
+    key_points:
+      - Give only the permissions needed for the task
+      - Scope IAM policies to specific resources and actions
+      - Limits the blast radius of a compromise
+      - Review and remove unused permissions regularly
+
+behavioral:
+  - question: Tell me about a time something broke in a project and how you fixed it.
+    key_points:
+      - Describe the situation and your responsibility
+      - Explain the steps you took to find the cause
+      - Share the result with measurable impact
+      - Mention what you learned or changed afterwards
+  - question: Why do you want to work in DevOps?
+    key_points:
+      - Interest in automation and reliability
+      - Concrete example from your own projects
+      - Collaboration between development and operations
+      - Desire to keep learning new tools
+  - question: Tell me about a project you are proud of.
+    key_points:
+      - The problem the project solves
+      - Your specific role and decisions
+      - Technologies used and why
+      - The outcome and what you would improve
+  - question: How do you handle disagreement with a teammate about a technical decision?
+    key_points:
+      - Listen and understand their reasoning
+      - Compare options with data or a quick experiment
+      - Agree on a decision and commit to it
+      - Keep the relationship respectful

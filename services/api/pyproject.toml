@@ -1,0 +1,26 @@
+[project]
+name = "hiretrack-api"
+version = "0.1.0"
+description = "HireTrack REST API: job applications tracker."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "hiretrack-common",
+    "fastapi==0.116.1",
+    "uvicorn==0.35.0",
+    "alembic==1.16.4",
+    "pyjwt==2.10.1",
+    "argon2-cffi==25.1.0",
+    "email-validator==2.2.0",
+    "anthropic==1.11.0",
+    "pyyaml==6.0.3",
+]
+
+[project.scripts]
+hiretrack-api = "hiretrack_api.__main__:main"
+
+[tool.uv.sources]
+hiretrack-common = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
