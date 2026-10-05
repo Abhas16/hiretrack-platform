@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens from docs/design/README.md, used as Tailwind classes (bg-canvas, text-muted, ...).
+ * Light values here; dark values below. ThemeProvider sets <html data-theme="light|dark">.
+ */
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-canvas: #f4f5f8;
+  --color-surface: #ffffff;
+  --color-input: #f8f9fb;
+  --color-soft: #f4f6fa;
+  --color-line: #e3e6ec;
+  --color-line-strong: #d5d9e1;
+  --color-track: #eef0f3;
+  --color-column: #ebedf2;
+  --color-drop: #dde3f3;
+
+  --color-ink: #151821;
+  --color-ink-2: #262b36;
+  --color-ink-3: #3a4150;
+  --color-muted: #5a6172;
+
+  --color-sidebar: #12151c;
+  --color-sidebar-ink: #e7e9ee;
+  --color-sidebar-active: #262c3b;
+  --color-sidebar-panel: #1b1f29;
+  --color-sidebar-text: #a9afbd;
+  --color-sidebar-faint: #8a91a0;
+
+  --color-primary: #2f5bea;
+  --color-primary-dark: #1e43b8;
+  --color-accent: #e07a1f;
+  --color-success: #1c6b3f;
+  --color-success-soft: #e3f4ea;
+  --color-danger: #8b2c2c;
+  --color-danger-soft: #fbf4f4;
+  --color-danger-line: #e6cfcf;
+  --color-warm-soft: #fff6ec;
+  --color-warm-ink: #8a4300;
+
+  /* Status badges: background + text per status */
+  --color-status-wishlist: #eef0f3;
+  --color-status-wishlist-ink: #3a4150;
+  --color-status-applied: #e6edff;
+  --color-status-applied-ink: #1e43b8;
+  --color-status-interview: #fff0e0;
+  --color-status-interview-ink: #8a4300;
+  --color-status-offer: #e3f4ea;
+  --color-status-offer-ink: #1c6b3f;
+  --color-status-rejected: #f3e8e8;
+  --color-status-rejected-ink: #8b2c2c;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #0f1117;
+  --color-surface: #171a22;
+  --color-input: #1d212b;
+  --color-soft: #1d212b;
+  --color-line: #262b36;
+  --color-line-strong: #343a48;
+  --color-track: #252a35;
+  --color-column: #1b1f28;
+  --color-drop: #23304f;
+
+  --color-ink: #e7e9ee;
+  --color-ink-2: #d4d8e0;
+  --color-ink-3: #b6bcc8;
+  --color-muted: #8e95a4;
+
+  --color-sidebar: #0b0d12;
+  --color-sidebar-active: #222736;
+  --color-sidebar-panel: #151821;
+
+  --color-primary: #4d74f0;
+  --color-primary-dark: #6c8df5;
+  --color-success: #23804c;
+  --color-success-soft: #173326;
+  --color-danger: #c25555;
+  --color-danger-soft: #2a1a1c;
+  --color-danger-line: #4d2a2e;
+  --color-warm-soft: #2a2117;
+  --color-warm-ink: #f0a868;
+
+  --color-status-wishlist: #262b36;
+  --color-status-wishlist-ink: #c3c8d2;
+  --color-status-applied: #1c2747;
+  --color-status-applied-ink: #93adff;
+  --color-status-interview: #33251a;
+  --color-status-interview-ink: #f0a868;
+  --color-status-offer: #173326;
+  --color-status-offer-ink: #7dd3a0;
+  --color-status-rejected: #33201f;
+  --color-status-rejected-ink: #e59a9a;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
