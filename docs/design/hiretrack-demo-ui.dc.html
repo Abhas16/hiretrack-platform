@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HireTrack app demo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5F8}
+a{color:#2F5BEA}a:hover{color:#1E43B8}
+button,input,select{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1000px; font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; color: #151821; background: #F4F5F8; overflow: hidden">
+
+<sc-if value="{{isLogin}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px">
+  <div style="flex: 1 1 420px; background: #12151C; color: #E7E9EE; padding: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 48px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="width: 40px; height: 40px; border-radius: 10px; background: #2F5BEA; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 15px">HT</div>
+      <div style="font-size: 20px; font-weight: 700">HireTrack</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 16px; max-width: 440px">
+      <h1 style="margin: 0; font-size: 40px; line-height: 1.15; font-weight: 700">Every application, interview and follow-up in one board.</h1>
+      <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #A9AFBD">Track your job search from wishlist to offer, get reminders when an application goes quiet, and see what's actually working.</p>
+    </div>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A91A0">build a1f3c9e · aks-dev · centralindia</div>
+  </div>
+  <div style="flex: 1 1 420px; display: flex; align-items: center; justify-content: center; padding: 48px 24px; box-sizing: border-box">
+    <div style="width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-size: 26px; font-weight: 700">Sign in</h2>
+        <p style="margin: 0; font-size: 14px; color: #5A6172">Use your HireTrack account to continue.</p>
+      </div>
+      <label for="login-email" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4150">Email
+        <input id="login-email" type="email" value="abhas@example.com" readonly style="min-height: 44px; padding: 0 14px; border: 1px solid #D5D9E1; border-radius: 10px; font-size: 14px; background: #FFFFFF; color: #151821">
+      </label>
+      <label for="login-pass" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4150">Password
+        <input id="login-pass" type="password" value="demopassword" readonly style="min-height: 44px; padding: 0 14px; border: 1px solid #D5D9E1; border-radius: 10px; font-size: 14px; background: #FFFFFF; color: #151821">
+      </label>
+      <button type="button" onClick="{{signIn}}" style="min-height: 46px; border: 0; border-radius: 10px; background: #2F5BEA; color: #FFFFFF; font-size: 15px; font-weight: 600; cursor: pointer">Sign in</button>
+      <p style="margin: 0; font-size: 12px; color: #5A6172; font-family: 'JetBrains Mono', monospace">POST /api/v1/auth/login → JWT</p>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isApp}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px">
+
+  <aside style="flex: 1 1 232px; background: #12151C; color: #E7E9EE; padding: 24px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 8px">
+      <div style="width: 36px; height: 36px; border-radius: 9px; background: #2F5BEA; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 14px">HT</div>
+      <div style="font-size: 18px; font-weight: 700">HireTrack</div>
+    </div>
+    <nav aria-label="Main" style="display: flex; flex-direction: column; gap: 4px">
+      <sc-for list="{{navItems}}" as="item" hint-placeholder-count="4">
+        <button type="button" onClick="{{item.go}}" style="{{item.style}}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.icon}}"></path></svg>
+          <span>{{item.label}}</span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 12px">
+      <button type="button" onClick="{{signOut}}" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #A9AFBD; font-size: 14px; font-weight: 500; cursor: pointer; text-align: left">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"></path></svg>
+        <span>Sign out</span>
+      </button>
+      <div style="padding: 12px 14px; border-radius: 10px; background: #1B1F29; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7; color: #8A91A0">api v1.4.0 · a1f3c9e<br>aks-dev · rollout 100%</div>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 20px 32px; background: #FFFFFF; border-bottom: 1px solid #E3E6EC">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; flex: 1 1 200px">{{pageTitle}}</h1>
+      <label for="global-search" style="flex: 1 1 260px; max-width: 360px; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border: 1px solid #D5D9E1; border-radius: 10px; background: #F8F9FB; color: #5A6172">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"></path></svg>
+        <input id="global-search" type="search" placeholder="Search company or role" value="{{query}}" onChange="{{onSearch}}" aria-label="Search applications" style="flex: 1; min-width: 0; border: 0; background: transparent; font-size: 14px; color: #151821; outline: none">
+      </label>
+      <button type="button" onClick="{{openAdd}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #2F5BEA; color: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        Add application
+      </button>
+      <div aria-label="Signed in as Abhas" style="width: 40px; height: 40px; border-radius: 50%; background: #E07A1F; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700">AM</div>
+    </header>
+
+    <div style="padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 24px">
+
+      <sc-if value="{{isDash}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 24px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700">Welcome back, Abhas</h2>
+            <p style="margin: 0; font-size: 14px; color: #5A6172">Here's where your job search stands this week.</p>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px">
+            <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+              <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 8px">
+                <div style="font-size: 13px; font-weight: 600; color: #5A6172">{{k.label}}</div>
+                <div style="font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.5px">{{k.value}}</div>
+                <div style="font-size: 12px; color: #5A6172">{{k.hint}}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 700">Pipeline</h3>
+            <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #EEF0F3">
+              <sc-for list="{{pipeline}}" as="p" hint-placeholder-count="5">
+                <div style="{{p.barStyle}}"></div>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 18px">
+              <sc-for list="{{pipeline}}" as="p" hint-placeholder-count="5">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3A4150">
+                  <span style="{{p.dotStyle}}"></span>{{p.label}} <strong style="font-family: 'JetBrains Mono', monospace">{{p.count}}</strong>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px">
+            <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+              <h3 style="margin: 0; font-size: 15px; font-weight: 700">Upcoming interviews</h3>
+              <sc-for list="{{upcoming}}" as="u" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 10px; background: #FFF6EC">
+                  <div style="{{u.avatarStyle}}">{{u.initial}}</div>
+                  <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                    <div style="font-size: 14px; font-weight: 600">{{u.company}} · {{u.role}}</div>
+                    <div style="font-size: 13px; color: #8A4300">{{u.next}}</div>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{noUpcoming}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 14px; color: #5A6172">No interviews scheduled.</p>
+              </sc-if>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+              <div style="display: flex; flex-direction: column; gap: 2px">
+                <h3 style="margin: 0; font-size: 15px; font-weight: 700">Follow-up reminders</h3>
+                <span style="font-size: 12px; color: #5A6172; font-family: 'JetBrains Mono', monospace">reminder-worker CronJob · daily 09:00</span>
+              </div>
+              <sc-for list="{{reminders}}" as="r" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 10px; background: #F4F6FA">
+                  <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+                    <div style="font-size: 14px; font-weight: 600">{{r.company}} · {{r.role}}</div>
+                    <div style="font-size: 13px; color: #5A6172">No update in {{r.idle}} days. Send a follow-up.</div>
+                  </div>
+                  <button type="button" onClick="{{r.done}}" style="min-height: 36px; padding: 0 12px; border: 1px solid #D5D9E1; border-radius: 8px; background: #FFFFFF; color: #151821; font-size: 13px; font-weight: 600; cursor: pointer">Mark done</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{noReminders}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 14px; color: #5A6172">All caught up.</p>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isBoard}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <p style="margin: 0; font-size: 14px; color: #5A6172">Move cards between stages. Invalid moves are rejected by the API's service layer.</p>
+          <div style="overflow-x: auto; padding-bottom: 8px">
+            <div style="display: grid; grid-template-columns: repeat(5, minmax(230px, 1fr)); gap: 16px; min-width: 1200px">
+              <sc-for list="{{columns}}" as="col" hint-placeholder-count="5">
+                <section style="background: #EBEDF2; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-height: 520px">
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 2px 4px">
+                    <span style="{{col.dotStyle}}"></span>
+                    <h3 style="margin: 0; font-size: 14px; font-weight: 700; flex: 1">{{col.label}}</h3>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #3A4150; background: #FFFFFF; border-radius: 6px; padding: 2px 8px">{{col.count}}</span>
+                  </div>
+                  <sc-for list="{{col.cards}}" as="c" hint-placeholder-count="2">
+                    <article style="background: #FFFFFF; border: 1px solid #E0E3EA; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+                      <div style="display: flex; align-items: center; gap: 10px">
+                        <div style="{{c.avatarStyle}}">{{c.initial}}</div>
+                        <div style="display: flex; flex-direction: column; min-width: 0">
+                          <div style="font-size: 14px; font-weight: 700">{{c.company}}</div>
+                          <div style="font-size: 12px; color: #5A6172">{{c.location}} · {{c.source}}</div>
+                        </div>
+                      </div>
+                      <div style="font-size: 13px; font-weight: 500; color: #262B36">{{c.role}}</div>
+                      <div style="font-size: 12px; color: #5A6172">{{c.idleText}}</div>
+                      <div style="display: flex; gap: 6px">
+                        <button type="button" onClick="{{c.prev}}" aria-label="Move to previous stage" style="width: 36px; height: 36px; border: 1px solid #D5D9E1; border-radius: 8px; background: #FFFFFF; color: #3A4150; cursor: pointer; display: flex; align-items: center; justify-content: center">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+                        </button>
+                        <button type="button" onClick="{{c.next}}" aria-label="Move to next stage" style="width: 36px; height: 36px; border: 1px solid #D5D9E1; border-radius: 8px; background: #FFFFFF; color: #3A4150; cursor: pointer; display: flex; align-items: center; justify-content: center">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+                        </button>
+                        <button type="button" onClick="{{c.reject}}" style="margin-left: auto; min-height: 36px; padding: 0 10px; border: 1px solid #E6CFCF; border-radius: 8px; background: #FFFFFF; color: #8B2C2C; font-size: 12px; font-weight: 600; cursor: pointer">Reject</button>
+                      </div>
+                    </article>
+                  </sc-for>
+                </section>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isApps}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px" role="group" aria-label="Filter by status">
+            <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+              <button type="button" onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+            </sc-for>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; overflow-x: auto">
+            <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px">
+              <thead>
+                <tr style="text-align: left; color: #5A6172; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px">
+                  <th style="padding: 14px 20px; font-weight: 600">Company</th>
+                  <th style="padding: 14px 20px; font-weight: 600">Role</th>
+                  <th style="padding: 14px 20px; font-weight: 600">Location</th>
+                  <th style="padding: 14px 20px; font-weight: 600">Source</th>
+                  <th style="padding: 14px 20px; font-weight: 600">Status</th>
+                  <th style="padding: 14px 20px; font-weight: 600">Last update</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+                  <tr style="border-top: 1px solid #EEF0F3">
+                    <td style="padding: 14px 20px">
+                      <div style="display: flex; align-items: center; gap: 10px">
+                        <div style="{{r.avatarStyle}}">{{r.initial}}</div>
+                        <strong style="font-weight: 600">{{r.company}}</strong>
+                      </div>
+                    </td>
+                    <td style="padding: 14px 20px; color: #262B36">{{r.role}}</td>
+                    <td style="padding: 14px 20px; color: #3A4150">{{r.location}}</td>
+                    <td style="padding: 14px 20px; color: #3A4150">{{r.source}}</td>
+                    <td style="padding: 14px 20px"><span style="{{r.badgeStyle}}">{{r.statusLabel}}</span></td>
+                    <td style="padding: 14px 20px; color: #5A6172">{{r.idleText}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <sc-if value="{{noRows}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; padding: 24px 20px; font-size: 14px; color: #5A6172">No applications match your search.</p>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isQueue}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <p style="margin: 0; font-size: 14px; color: #3A4150">New jobs matched to your profile. Approve to open the apply page with your kit ready; you always submit yourself.</p>
+              <span style="font-size: 12px; color: #5A6172; font-family: 'JetBrains Mono', monospace">job-scout CronJob · every 6h → match-scorer workers (KEDA)</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px" role="group" aria-label="Minimum match score">
+              <sc-for list="{{thresholds}}" as="th" hint-placeholder-count="3">
+                <button type="button" onClick="{{th.pick}}" style="{{th.style}}">{{th.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <sc-for list="{{matches}}" as="m" hint-placeholder-count="3">
+            <article style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+              <div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+                <div style="{{m.avatarStyle}}">{{m.initial}}</div>
+                <div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+                  <div style="font-size: 16px; font-weight: 700">{{m.role}}</div>
+                  <div style="font-size: 13px; color: #5A6172">{{m.company}} · {{m.location}} · via {{m.source}} · posted {{m.posted}}</div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 120px">
+                  <div style="{{m.scoreStyle}}">{{m.score}}% match</div>
+                  <div style="width: 120px; height: 6px; border-radius: 3px; background: #EEF0F3; overflow: hidden"><div style="{{m.scoreBar}}"></div></div>
+                </div>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+                <span style="font-size: 12px; font-weight: 600; color: #3A4150; margin-right: 4px">Matched</span>
+                <sc-for list="{{m.matched}}" as="sk" hint-placeholder-count="4">
+                  <span style="padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #E3F4EA; color: #1C6B3F">{{sk}}</span>
+                </sc-for>
+              </div>
+              <sc-if value="{{m.hasGaps}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+                  <span style="font-size: 12px; font-weight: 600; color: #3A4150; margin-right: 4px">Gaps</span>
+                  <sc-for list="{{m.gaps}}" as="g" hint-placeholder-count="2">
+                    <span style="padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #FFF0E0; color: #8A4300">{{g}}</span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <div style="font-size: 13px; color: #3A4150">Suggested resume: <strong>{{m.resume}}</strong></div>
+              <sc-if value="{{m.kitOpen}}" hint-placeholder-val="{{ false }}">
+                <div style="background: #F6F7FA; border: 1px solid #E3E6EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <div style="font-size: 12px; font-weight: 700; color: #3A4150; text-transform: uppercase; letter-spacing: 0.6px">Cover note</div>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #262B36">{{m.note}}</p>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <div style="font-size: 12px; font-weight: 700; color: #3A4150; text-transform: uppercase; letter-spacing: 0.6px">Tailored bullets</div>
+                    <sc-for list="{{m.bullets}}" as="b" hint-placeholder-count="2">
+                      <div style="font-size: 14px; line-height: 1.5; color: #262B36; padding-left: 14px">– {{b}}</div>
+                    </sc-for>
+                  </div>
+                  <button type="button" onClick="{{m.copy}}" style="align-self: flex-start; min-height: 36px; padding: 0 12px; border: 1px solid #D5D9E1; border-radius: 8px; background: #FFFFFF; color: #151821; font-size: 13px; font-weight: 600; cursor: pointer">Copy kit</button>
+                </div>
+              </sc-if>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <button type="button" onClick="{{m.approve}}" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: #2F5BEA; color: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">Approve &amp; open apply page</button>
+                <button type="button" onClick="{{m.toggleKit}}" style="min-height: 40px; padding: 0 16px; border: 1px solid #D5D9E1; border-radius: 10px; background: #FFFFFF; color: #151821; font-size: 14px; font-weight: 600; cursor: pointer">{{m.kitLabel}}</button>
+                <button type="button" onClick="{{m.skip}}" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: transparent; color: #5A6172; font-size: 14px; font-weight: 600; cursor: pointer">Skip</button>
+              </div>
+            </article>
+          </sc-for>
+          <sc-if value="{{noMatches}}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 32px; text-align: center; font-size: 14px; color: #5A6172">Queue is empty at this threshold. The next scout run will add new matches.</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isAnalytics}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px">
+            <sc-for list="{{analyticsKpis}}" as="k" hint-placeholder-count="3">
+              <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 8px">
+                <div style="font-size: 13px; font-weight: 600; color: #5A6172">{{k.label}}</div>
+                <div style="font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace">{{k.value}}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px">
+            <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 18px">
+              <h3 style="margin: 0; font-size: 15px; font-weight: 700">Applications sent per week</h3>
+              <div style="display: flex; align-items: flex-end; gap: 14px; height: 200px; border-bottom: 1px solid #E3E6EC; padding: 0 4px">
+                <sc-for list="{{weeks}}" as="w" hint-placeholder-count="6">
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%">
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #3A4150">{{w.count}}</span>
+                    <div style="{{w.barStyle}}"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: flex; gap: 14px; padding: 0 4px">
+                <sc-for list="{{weeks}}" as="w" hint-placeholder-count="6">
+                  <span style="flex: 1; text-align: center; font-size: 12px; color: #5A6172">{{w.label}}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E3E6EC; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+              <h3 style="margin: 0; font-size: 15px; font-weight: 700">Funnel</h3>
+              <sc-for list="{{funnel}}" as="f" hint-placeholder-count="4">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; color: #3A4150"><span>{{f.label}}</span><strong style="font-family: 'JetBrains Mono', monospace">{{f.count}}</strong></div>
+                  <div style="height: 12px; border-radius: 6px; background: #EEF0F3; overflow: hidden"><div style="{{f.barStyle}}"></div></div>
+                </div>
+              </sc-for>
+              <h3 style="margin: 8px 0 0; font-size: 15px; font-weight: 700">By source</h3>
+              <sc-for list="{{sources}}" as="s" hint-placeholder-count="4">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; color: #3A4150"><span>{{s.label}}</span><strong style="font-family: 'JetBrains Mono', monospace">{{s.count}}</strong></div>
+                  <div style="height: 12px; border-radius: 6px; background: #EEF0F3; overflow: hidden"><div style="{{s.barStyle}}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+</sc-if>
+
+<sc-if value="{{showAdd}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(18, 21, 28, 0.55); display: flex; align-items: flex-start; justify-content: center; padding: 96px 16px; box-sizing: border-box">
+  <div role="dialog" aria-label="Add application" style="width: 100%; max-width: 440px; background: #FFFFFF; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 700">Add application</h2>
+    <label for="add-company" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4150">Company
+      <input id="add-company" type="text" placeholder="e.g. Atlassian" onChange="{{setCompany}}" style="min-height: 44px; padding: 0 14px; border: 1px solid #D5D9E1; border-radius: 10px; font-size: 14px">
+    </label>
+    <label for="add-role" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4150">Role
+      <input id="add-role" type="text" placeholder="e.g. Junior DevOps Engineer" onChange="{{setRole}}" style="min-height: 44px; padding: 0 14px; border: 1px solid #D5D9E1; border-radius: 10px; font-size: 14px">
+    </label>
+    <label for="add-location" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4150">Location
+      <input id="add-location" type="text" placeholder="e.g. Bhubaneswar" onChange="{{setLocation}}" style="min-height: 44px; padding: 0 14px; border: 1px solid #D5D9E1; border-radius: 10px; font-size: 14px">
+    </label>
+    <label for="add-status" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4150">Stage
+      <select id="add-status" onChange="{{setStatus}}" style="min-height: 44px; padding: 0 10px; border: 1px solid #D5D9E1; border-radius: 10px; font-size: 14px; background: #FFFFFF">
+        <option value="APPLIED">Applied</option>
+        <option value="WISHLIST">Wishlist</option>
+      </select>
+    </label>
+    <div style="display: flex; justify-content: flex-end; gap: 10px">
+      <button type="button" onClick="{{closeAdd}}" style="min-height: 44px; padding: 0 16px; border: 1px solid #D5D9E1; border-radius: 10px; background: #FFFFFF; color: #151821; font-size: 14px; font-weight: 600; cursor: pointer">Cancel</button>
+      <button type="button" onClick="{{saveAdd}}" style="min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #2F5BEA; color: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">Save</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{toastOn}}" hint-placeholder-val="{{ false }}">
+  <div role="status" style="{{toastStyle}}">{{toastText}}</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+var HT_STATUSES = ['WISHLIST', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED'];
+var HT_LABELS = { WISHLIST: 'Wishlist', APPLIED: 'Applied', INTERVIEW: 'Interview', OFFER: 'Offer', REJECTED: 'Rejected' };
+var HT_COLORS = {
+  WISHLIST: { bg: '#EEF0F3', fg: '#3A4150', dot: '#8A93A3' },
+  APPLIED: { bg: '#E6EDFF', fg: '#1E43B8', dot: '#2F5BEA' },
+  INTERVIEW: { bg: '#FFF0E0', fg: '#8A4300', dot: '#E07A1F' },
+  OFFER: { bg: '#E3F4EA', fg: '#1C6B3F', dot: '#2E9A5E' },
+  REJECTED: { bg: '#F3E8E8', fg: '#8B2C2C', dot: '#7A2626' }
+};
+var HT_ALLOWED = {
+  WISHLIST: ['APPLIED', 'REJECTED'],
+  APPLIED: ['WISHLIST', 'INTERVIEW', 'REJECTED'],
+  INTERVIEW: ['OFFER', 'REJECTED'],
+  OFFER: ['REJECTED'],
+  REJECTED: []
+};
+var HT_AVATAR = ['#2F5BEA', '#E07A1F', '#2E9A5E', '#7A4FD6', '#C2410C', '#0F766E'];
+var HT_MATCH_SEED = [
+  { id: 101, company: 'Postman', role: 'DevOps Engineer I', location: 'Bengaluru', source: 'Greenhouse', posted: '3h ago', score: 91, matched: ['Kubernetes', 'Terraform', 'GitHub Actions', 'Prometheus'], gaps: [], resume: 'DevOps – Kubernetes focus', note: 'I am a Microsoft-certified DevOps Engineer (AZ-400) who has built Terraform-provisioned Kubernetes platforms with GitOps delivery and Prometheus/Grafana monitoring. I would love to bring that hands-on platform work to your infrastructure team.', bullets: ['Provisioned AKS and EKS clusters end to end with Terraform modules and remote state', 'Built GitHub Actions pipelines with OIDC auth, Trivy scans and GitOps promotion via Argo CD'] },
+  { id: 102, company: 'Groww', role: 'Associate Cloud Engineer (Azure)', location: 'Remote', source: 'Lever', posted: '5h ago', score: 86, matched: ['Azure', 'AKS', 'Terraform', 'Linux'], gaps: ['Go'], resume: 'Azure Cloud – AZ-104 focus', note: 'With AZ-104 and AZ-400 certifications and a production-style AKS platform built on Terraform, Key Vault and workload identity, I can contribute to your Azure environment from day one.', bullets: ['Designed Azure VNet, AKS, ACR, Key Vault and PostgreSQL infrastructure as reusable Terraform modules', 'Implemented secretless Azure access using workload identity and OIDC federation'] },
+  { id: 103, company: 'BrowserStack', role: 'Build & Release Engineer', location: 'Mumbai', source: 'Ashby', posted: '1d ago', score: 78, matched: ['CI/CD', 'Docker', 'Git', 'Bash'], gaps: ['Jenkins shared libraries'], resume: 'Build/Release – CI/CD focus', note: 'I enjoy making releases boring and safe: I have built CI pipelines with automated testing, image scanning and canary rollouts that roll back on error-rate spikes.', bullets: ['Automated canary releases with Argo Rollouts and Prometheus-based rollback', 'Cut pipeline time with path-filtered reusable GitHub Actions workflows'] },
+  { id: 104, company: 'Hasura', role: 'Site Reliability Engineer I', location: 'Bengaluru', source: 'Greenhouse', posted: '1d ago', score: 72, matched: ['Prometheus', 'Grafana', 'Kubernetes'], gaps: ['On-call experience', 'Go'], resume: 'SRE – Observability focus', note: 'I have defined SLOs with multi-window burn-rate alerts and built an alert-to-GitHub-issue triage service, and I am keen to grow as an SRE on a team that values reliability.', bullets: ['Defined 99.5% availability SLOs with burn-rate alerting and runbooks', 'Built an incident triage service correlating Prometheus metrics and Loki logs'] },
+  { id: 105, company: 'Swiggy', role: 'Platform Engineer', location: 'Bengaluru', source: 'Lever', posted: '2d ago', score: 64, matched: ['Kubernetes', 'Helm'], gaps: ['3+ yrs experience', 'Kafka'], resume: 'DevOps – Kubernetes focus', note: 'I have built Helm-packaged services on Kubernetes with autoscaling and GitOps delivery and would welcome the chance to grow into platform engineering at scale.', bullets: ['Packaged services as an umbrella Helm chart with HPA, PDB and NetworkPolicies'] }
+];
+var HT_WEEKS = ['Aug 24', 'Aug 31', 'Sep 7', 'Sep 14', 'Sep 21', 'Sep 28'];
+var HT_SEED = [
+  { id: 1, company: 'Atlassian', role: 'Associate DevOps Engineer', location: 'Bengaluru', source: 'Referral', status: 'INTERVIEW', week: 1, idle: 1, reached: 2, dti: 9, next: 'Tech round 2 · Thu, 8 Oct · 11:00' },
+  { id: 2, company: 'Microsoft', role: 'Cloud Support Engineer', location: 'Hyderabad', source: 'LinkedIn', status: 'APPLIED', week: 4, idle: 9, reached: 1 },
+  { id: 3, company: 'EPAM Systems', role: 'Junior DevOps Engineer', location: 'Pune', source: 'Referral', status: 'INTERVIEW', week: 2, idle: 3, reached: 2, dti: 6, next: 'HR screen · Tue, 6 Oct · 15:30' },
+  { id: 4, company: 'Maersk', role: 'Platform Engineer I', location: 'Bengaluru', source: 'Referral', status: 'APPLIED', week: 3, idle: 11, reached: 1 },
+  { id: 5, company: 'TCS', role: 'Azure DevOps Engineer', location: 'Bhubaneswar', source: 'Naukri', status: 'OFFER', week: 0, idle: 2, reached: 3, dti: 7 },
+  { id: 6, company: 'Walmart Global Tech', role: 'Site Reliability Engineer I', location: 'Bengaluru', source: 'Referral', status: 'REJECTED', week: 0, idle: 14, reached: 2, dti: 12 },
+  { id: 7, company: 'Thoughtworks', role: 'Associate Infrastructure Consultant', location: 'Pune', source: 'Company site', status: 'APPLIED', week: 5, idle: 2, reached: 1 },
+  { id: 8, company: 'Razorpay', role: 'DevOps Engineer I', location: 'Bengaluru', source: 'LinkedIn', status: 'WISHLIST', week: 5, idle: 0, reached: 0 },
+  { id: 9, company: 'Freshworks', role: 'Cloud Engineer', location: 'Chennai', source: 'LinkedIn', status: 'REJECTED', week: 1, idle: 20, reached: 1 },
+  { id: 10, company: 'Zoho', role: 'Build & Release Engineer', location: 'Chennai', source: 'Company site', status: 'WISHLIST', week: 5, idle: 1, reached: 0 },
+  { id: 11, company: 'Infosys', role: 'Cloud Infrastructure Associate', location: 'Bhubaneswar', source: 'Naukri', status: 'APPLIED', week: 4, idle: 8, reached: 1 },
+  { id: 12, company: 'Accenture', role: 'Azure Cloud Associate', location: 'Remote', source: 'LinkedIn', status: 'INTERVIEW', week: 3, idle: 4, reached: 2, dti: 10, next: 'Technical · Fri, 9 Oct · 10:00' }
+];
+
+class Component extends DCLogic {
+  constructor(...args) {
+    super(...args);
+    this.state = {
+      screen: 'dashboard',
+      apps: HT_SEED.map(function (a) { return Object.assign({}, a); }),
+      query: '',
+      filter: 'ALL',
+      toast: null,
+      showAdd: false,
+      nextId: 13,
+      matches: HT_MATCH_SEED.map(function (m) { return Object.assign({}, m); }),
+      threshold: 70,
+      openKit: null
+    };
+    this.draft = { company: '', role: '', location: '', status: 'APPLIED' };
+  }
+
+  showToast(kind, text) {
+    this.setState({ toast: { kind: kind, text: text } });
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 3400);
+  }
+
+  componentWillUnmount() { clearTimeout(this.toastTimer); }
+
+  move(app, target) {
+    if (!target) {
+      this.showToast('error', '409 Conflict · no stage ' + (app.status === 'WISHLIST' ? 'before Wishlist' : 'after ' + HT_LABELS[app.status]));
+      return;
+    }
+    if (HT_ALLOWED[app.status].indexOf(target) === -1) {
+      this.showToast('error', '409 Conflict · ' + HT_LABELS[app.status] + ' → ' + HT_LABELS[target] + ' is not allowed');
+      return;
+    }
+    var idx = HT_STATUSES.indexOf(target);
+    var apps = this.state.apps.map(function (a) {
+      if (a.id !== app.id) return a;
+      var reached = target === 'REJECTED' ? a.reached : Math.max(a.reached, idx);
+      return Object.assign({}, a, { status: target, idle: 0, reached: reached });
+    });
+    this.setState({ apps: apps });
+    this.showToast('ok', 'PATCH /api/v1/applications/' + app.id + '/status · 200 OK');
+  }
+
+  avatarStyle(company, size) {
+    var sum = 0;
+    for (var i = 0; i < company.length; i++) sum += company.charCodeAt(i);
+    var c = HT_AVATAR[sum % HT_AVATAR.length];
+    return 'width:' + size + 'px;height:' + size + 'px;flex:none;border-radius:9px;background:' + c + ';color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:' + Math.round(size * 0.42) + 'px';
+  }
+
+  idleText(n) {
+    if (n === 0) return 'Updated today';
+    if (n === 1) return 'Updated yesterday';
+    return 'Updated ' + n + ' days ago';
+  }
+
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var apps = s.apps;
+    var q = s.query.trim().toLowerCase();
+    var matches = function (a) {
+      return !q || a.company.toLowerCase().indexOf(q) !== -1 || a.role.toLowerCase().indexOf(q) !== -1;
+    };
+    var count = function (st) { return apps.filter(function (a) { return a.status === st; }).length; };
+
+    var navDefs = [
+      { key: 'dashboard', label: 'Dashboard', icon: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z' },
+      { key: 'board', label: 'Board', icon: 'M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z' },
+      { key: 'queue', label: 'Review queue (' + s.matches.length + ')', icon: 'M4 6h16M4 12h10M4 18h7M17 15l2 2 4-4' },
+      { key: 'applications', label: 'Applications', icon: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01' },
+      { key: 'analytics', label: 'Analytics', icon: 'M3 20h18M7 16v-5M12 16V6M17 16v-8' }
+    ];
+    var navBase = 'display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 14px;border:0;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;';
+    var navItems = navDefs.map(function (n) {
+      var active = s.screen === n.key;
+      return {
+        label: n.label, icon: n.icon,
+        style: navBase + (active ? 'background:#262C3B;color:#FFFFFF;font-weight:600' : 'background:transparent;color:#A9AFBD;font-weight:500'),
+        go: function () { self.setState({ screen: n.key }); }
+      };
+    });
+    var titles = { dashboard: 'Dashboard', board: 'Board', queue: 'Review queue', applications: 'Applications', analytics: 'Analytics' };
+
+    var sent = apps.filter(function (a) { return a.status !== 'WISHLIST'; });
+    var responded = sent.filter(function (a) { return a.reached >= 2 || a.status === 'REJECTED'; });
+    var rate = sent.length ? Math.round(responded.length / sent.length * 100) : 0;
+    var active = apps.filter(function (a) { return a.status !== 'REJECTED' && a.status !== 'OFFER'; }).length;
+    var kpis = [
+      { label: 'Total applications', value: String(apps.length), hint: sent.length + ' sent, ' + count('WISHLIST') + ' on wishlist' },
+      { label: 'Active pipeline', value: String(active), hint: 'Not yet offered or rejected' },
+      { label: 'Interviews', value: String(count('INTERVIEW')), hint: 'Currently in interview stage' },
+      { label: 'Response rate', value: rate + '%', hint: responded.length + ' of ' + sent.length + ' sent got a reply' }
+    ];
+
+    var total = apps.length || 1;
+    var pipeline = HT_STATUSES.map(function (st) {
+      var n = count(st);
+      return {
+        label: HT_LABELS[st], count: n,
+        barStyle: 'width:' + (n / total * 100) + '%;background:' + HT_COLORS[st].dot,
+        dotStyle: 'width:10px;height:10px;border-radius:50%;flex:none;background:' + HT_COLORS[st].dot
+      };
+    });
+
+    var upcoming = apps.filter(function (a) { return a.status === 'INTERVIEW' && a.next; }).map(function (a) {
+      return { company: a.company, role: a.role, next: a.next, initial: a.company.charAt(0), avatarStyle: self.avatarStyle(a.company, 40) };
+    });
+    var reminders = apps.filter(function (a) { return a.status === 'APPLIED' && a.idle >= 7; }).map(function (a) {
+      return {
+        company: a.company, role: a.role, idle: a.idle,
+        done: function () {
+          self.setState({ apps: self.state.apps.map(function (x) { return x.id === a.id ? Object.assign({}, x, { idle: 0 }) : x; }) });
+          self.showToast('ok', 'PATCH /api/v1/reminders/' + a.id + ' · 200 OK');
+        }
+      };
+    });
+
+    var columns = HT_STATUSES.map(function (st, i) {
+      var cards = apps.filter(function (a) { return a.status === st && matches(a); }).map(function (a) {
+        return {
+          company: a.company, role: a.role, location: a.location, source: a.source,
+          initial: a.company.charAt(0), avatarStyle: self.avatarStyle(a.company, 36),
+          idleText: self.idleText(a.idle),
+          prev: function () { self.move(a, i > 0 ? HT_STATUSES[i - 1] : null); },
+          next: function () { self.move(a, i < 3 ? HT_STATUSES[i + 1] : null); },
+          reject: function () { self.move(a, 'REJECTED'); }
+        };
+      });
+      return {
+        label: HT_LABELS[st], count: cards.length, cards: cards,
+        dotStyle: 'width:10px;height:10px;border-radius:50%;flex:none;background:' + HT_COLORS[st].dot
+      };
+    });
+
+    var pillBase = 'min-height:40px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;';
+    var filters = ['ALL'].concat(HT_STATUSES).map(function (f) {
+      var on = s.filter === f;
+      var n = f === 'ALL' ? apps.length : count(f);
+      return {
+        label: (f === 'ALL' ? 'All' : HT_LABELS[f]) + ' · ' + n,
+        style: pillBase + (on ? 'border:1px solid #151821;background:#151821;color:#FFFFFF' : 'border:1px solid #D5D9E1;background:#FFFFFF;color:#3A4150'),
+        pick: function () { self.setState({ filter: f }); }
+      };
+    });
+    var rows = apps.filter(function (a) { return (s.filter === 'ALL' || a.status === s.filter) && matches(a); })
+      .sort(function (a, b) { return a.idle - b.idle; })
+      .map(function (a) {
+        var c = HT_COLORS[a.status];
+        return {
+          company: a.company, role: a.role, location: a.location, source: a.source,
+          initial: a.company.charAt(0), avatarStyle: self.avatarStyle(a.company, 32),
+          statusLabel: HT_LABELS[a.status], idleText: self.idleText(a.idle),
+          badgeStyle: 'display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;background:' + c.bg + ';color:' + c.fg
+        };
+      });
+
+    var weekCounts = HT_WEEKS.map(function (_, i) { return sent.filter(function (a) { return a.week === i; }).length; });
+    var maxWeek = Math.max.apply(null, weekCounts.concat([1]));
+    var weeks = HT_WEEKS.map(function (label, i) {
+      return { label: label, count: weekCounts[i], barStyle: 'width:100%;max-width:44px;border-radius:6px 6px 0 0;background:#2F5BEA;height:' + Math.max(4, Math.round(weekCounts[i] / maxWeek * 150)) + 'px' };
+    });
+    var funnelDefs = [['Saved', 0], ['Applied', 1], ['Interviewed', 2], ['Offer', 3]];
+    var funnelColors = ['#8A93A3', '#2F5BEA', '#E07A1F', '#2E9A5E'];
+    var funnel = funnelDefs.map(function (d, i) {
+      var n = apps.filter(function (a) { return a.reached >= d[1]; }).length;
+      return { label: d[0], count: n, barStyle: 'height:100%;border-radius:6px;background:' + funnelColors[i] + ';width:' + (n / total * 100) + '%' };
+    });
+    var sourceNames = ['Referral', 'LinkedIn', 'Naukri', 'Company site', 'Greenhouse', 'Lever', 'Ashby'];
+    var sources = sourceNames.map(function (name, i) {
+      var n = apps.filter(function (a) { return a.source === name; }).length;
+      return { keep: i < 4 || n > 0, label: name, count: n, barStyle: 'height:100%;border-radius:6px;background:#3A4150;width:' + (n / total * 100) + '%' };
+    }).filter(function (x) { return x.keep; });
+    var dtiList = apps.filter(function (a) { return a.dti; }).map(function (a) { return a.dti; });
+    var avgDti = dtiList.length ? Math.round(dtiList.reduce(function (x, y) { return x + y; }, 0) / dtiList.length) : 0;
+    var offers = apps.filter(function (a) { return a.reached >= 3; }).length;
+    var analyticsKpis = [
+      { label: 'Avg. days to first interview', value: avgDti + 'd' },
+      { label: 'Interview rate', value: (sent.length ? Math.round(apps.filter(function (a) { return a.reached >= 2; }).length / sent.length * 100) : 0) + '%' },
+      { label: 'Offers', value: String(offers) }
+    ];
+
+
+    var thBase = 'min-height:40px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;';
+    var thresholds = [[80, 'Score 80+'], [70, 'Score 70+'], [0, 'All']].map(function (t) {
+      var on = s.threshold === t[0];
+      return { label: t[1], style: thBase + (on ? 'border:1px solid #151821;background:#151821;color:#FFFFFF' : 'border:1px solid #D5D9E1;background:#FFFFFF;color:#3A4150'), pick: function () { self.setState({ threshold: t[0] }); } };
+    });
+    var matches = s.matches.filter(function (m) { return m.score >= s.threshold; }).map(function (m) {
+      var good = m.score >= 80;
+      var mid = m.score >= 70;
+      var col = good ? '#1C6B3F' : (mid ? '#1E43B8' : '#8A4300');
+      var bar = good ? '#2E9A5E' : (mid ? '#2F5BEA' : '#E07A1F');
+      var open = s.openKit === m.id;
+      return {
+        company: m.company, role: m.role, location: m.location, source: m.source, posted: m.posted, score: m.score,
+        matched: m.matched, gaps: m.gaps, hasGaps: m.gaps.length > 0, resume: m.resume, note: m.note, bullets: m.bullets,
+        initial: m.company.charAt(0), avatarStyle: self.avatarStyle(m.company, 44),
+        scoreStyle: 'font-family:"JetBrains Mono",monospace;font-size:15px;font-weight:700;color:' + col,
+        scoreBar: 'height:100%;border-radius:3px;background:' + bar + ';width:' + m.score + '%',
+        kitOpen: open, kitLabel: open ? 'Hide kit' : 'View kit',
+        toggleKit: function () { self.setState({ openKit: open ? null : m.id }); },
+        copy: function () {
+          var text = m.note + '\n\n' + m.bullets.map(function (b) { return '- ' + b; }).join('\n');
+          try { navigator.clipboard.writeText(text); } catch (e) {}
+          self.showToast('ok', 'Kit copied to clipboard');
+        },
+        approve: function () {
+          var id = self.state.nextId;
+          var app = { id: id, company: m.company, role: m.role, location: m.location, source: m.source, status: 'APPLIED', week: 5, idle: 0, reached: 1 };
+          self.setState({ apps: self.state.apps.concat([app]), nextId: id + 1, matches: self.state.matches.filter(function (x) { return x.id !== m.id; }), openKit: null });
+          self.showToast('ok', 'POST /api/v1/matches/' + m.id + '/approve · 201 Created · added to board as Applied');
+        },
+        skip: function () {
+          self.setState({ matches: self.state.matches.filter(function (x) { return x.id !== m.id; }), openKit: null });
+          self.showToast('ok', 'POST /api/v1/matches/' + m.id + '/skip · 204 No Content');
+        }
+      };
+    });
+    var t = s.toast;
+    var toastStyle = t ? 'position:absolute;top:20px;right:20px;max-width:420px;padding:14px 18px;border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.5;color:#FFFFFF;background:' + (t.kind === 'error' ? '#8B2C2C' : '#1C6B3F') + ';box-shadow:0 10px 30px rgba(18,21,28,0.25)' : '';
+
+    return {
+      isLogin: s.screen === 'login',
+      isApp: s.screen !== 'login',
+      isDash: s.screen === 'dashboard',
+      isBoard: s.screen === 'board',
+      isApps: s.screen === 'applications',
+      isAnalytics: s.screen === 'analytics',
+      isQueue: s.screen === 'queue',
+      thresholds: thresholds, matches: matches, noMatches: matches.length === 0,
+      pageTitle: titles[s.screen] || '',
+      navItems: navItems,
+      query: s.query,
+      onSearch: function (e) { self.setState({ query: e.target.value, screen: s.screen === 'dashboard' || s.screen === 'analytics' ? 'applications' : s.screen }); },
+      signIn: function () { self.setState({ screen: 'dashboard' }); self.showToast('ok', 'POST /api/v1/auth/login · 200 OK'); },
+      signOut: function () { self.setState({ screen: 'login', showAdd: false }); },
+      kpis: kpis, pipeline: pipeline,
+      upcoming: upcoming, noUpcoming: upcoming.length === 0,
+      reminders: reminders, noReminders: reminders.length === 0,
+      columns: columns,
+      filters: filters, rows: rows, noRows: rows.length === 0,
+      weeks: weeks, funnel: funnel, sources: sources, analyticsKpis: analyticsKpis,
+      showAdd: s.showAdd,
+      openAdd: function () { self.draft = { company: '', role: '', location: '', status: 'APPLIED' }; self.setState({ showAdd: true }); },
+      closeAdd: function () { self.setState({ showAdd: false }); },
+      setCompany: function (e) { self.draft.company = e.target.value; },
+      setRole: function (e) { self.draft.role = e.target.value; },
+      setLocation: function (e) { self.draft.location = e.target.value; },
+      setStatus: function (e) { self.draft.status = e.target.value; },
+      saveAdd: function () {
+        var d = self.draft;
+        if (!d.company.trim() || !d.role.trim()) {
+          self.showToast('error', '422 Unprocessable Entity · company and role are required');
+          return;
+        }
+        var id = self.state.nextId;
+        var app = { id: id, company: d.company.trim(), role: d.role.trim(), location: d.location.trim() || 'Remote', source: 'Company site', status: d.status, week: 5, idle: 0, reached: HT_STATUSES.indexOf(d.status) };
+        self.setState({ apps: self.state.apps.concat([app]), nextId: id + 1, showAdd: false });
+        self.showToast('ok', 'POST /api/v1/applications · 201 Created');
+      },
+      toastOn: !!t,
+      toastText: t ? t.text : '',
+      toastStyle: toastStyle
+    };
+  }
+}
+</script>
+</body>
+</html>

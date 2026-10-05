@@ -1,0 +1,38 @@
+# personal files - never commit
+private/*
+!private/README.md
+
+# env / secrets
+.env
+*.env
+!.env.example
+*.tfvars
+!*.tfvars.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# node
+node_modules/
+dist/
+coverage/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
