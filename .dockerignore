@@ -1,0 +1,24 @@
+.git
+.github
+
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/dist
+**/coverage
+
+# secrets: any .env in any folder (.env.example is still sent - it has no real values)
+**/.env
+**/*.env
+private/
+
+infra/
+deploy/
+observability/
+docs/
+scripts/
+docker-compose.yml
