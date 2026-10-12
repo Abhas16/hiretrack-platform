@@ -1,0 +1,82 @@
+# HireTrack local stack: postgres -> migrate (one-shot) -> api -> web.
+# Usage (repo root):  docker compose up --build        Stop: docker compose down
+# Secrets come from the .env file in the repo root (git-ignored), never from this file.
+name: hiretrack
+
+# Reusable blocks ("x-" = ignored by compose itself; "&name" saves it, "*name" reuses it).
+x-api-image: &api-image
+  build:
+    context: .                          # repo root: the API image needs libs/ and uv.lock
+    dockerfile: services/api/Dockerfile
+  image: hiretrack-api:dev              # migrate and api share this one image
+
+x-db-env: &db-env
+  DB_HOST: postgres                     # the service name below, NOT localhost
+  DB_PORT: "5432"                       # container port, not the laptop port
+  DB_NAME: ${DB_NAME:?set DB_NAME in .env}
+  DB_USER: ${DB_USER:?set DB_USER in .env}
+  DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+  DB_SSLMODE: disable
+
+services:
+  postgres:
+    image: postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"                     # 5432 on this laptop is taken by a Windows Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    <<: *api-image
+    command: ["alembic", "-c", "services/api/alembic.ini", "upgrade", "head"]
+    environment: *db-env
+    depends_on:
+      postgres:
+        condition: service_healthy      # postgres accepts connections
+    restart: "no"                       # runs once, then exits
+
+  api:
+    <<: *api-image
+    environment:
+      <<: *db-env
+      APP_ENV: local
+      HOST: 0.0.0.0                     # listen on all interfaces inside the container
+      LOG_FORMAT: json
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      CORS_ALLOWED_ORIGINS: http://localhost:8080   # the web container, as the browser sees it
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully   # tables exist (exit code 0)
+    restart: unless-stopped
+
+  web:
+    build:
+      context: services/web
+    image: hiretrack-web:dev
+    environment:
+      API_BASE_URL: http://localhost:8000   # the BROWSER calls this, from your laptop
+      ENVIRONMENT: docker
+      VERSION: dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy      # uses the HEALTHCHECK in the API Dockerfile
+    restart: unless-stopped
+
+volumes:
+  pgdata:
