@@ -1,0 +1,7 @@
+# Installed fresh (Linux binaries) by `npm ci` inside the image; the Windows copy must not overwrite it.
+node_modules
+# The image builds its own dist/.
+dist
+coverage
+*.log
+.vscode
