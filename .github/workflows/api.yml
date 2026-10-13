@@ -2,16 +2,17 @@
 name: api
 
 on:
+  # Every PR starts this workflow (no `paths` here), so its required check always reports.
+  # The `changes` job below decides whether the real jobs run; a job skipped by `if:` counts as passed.
   pull_request:
-    paths: &api-paths
+  push:
+    branches: [main]
+    paths:   # on main nothing is required, so skipping whole runs here just saves minutes
       - "services/api/**"
       - "libs/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/api.yml"
-  push:
-    branches: [main]
-    paths: *api-paths
 
 permissions:
   contents: read
@@ -21,8 +22,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which folders did this PR/push touch? Outputs api=true/false for the jobs below.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read          # paths-filter lists a PR's changed files through the GitHub API
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'services/api/**'
+              - 'libs/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/api.yml'
+
   checks:
-    name: lint, typecheck, test
+    name: api checks
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -49,7 +74,7 @@ jobs:
         run: uv run pytest -m integration
 
   image:
-    name: docker build (${{ matrix.arch }})
+    name: api image (${{ matrix.arch }})
     needs: checks
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
@@ -75,3 +100,17 @@ jobs:
           tags: hiretrack-api:${{ github.sha }}
           cache-from: type=gha,scope=api-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=api-${{ matrix.arch }}
+
+  # The ONE check that branch protection requires for this workflow.
+  # Runs even when the jobs above were skipped, and fails only if one of them failed or was cancelled.
+  ok:
+    name: api-ok
+    needs: [changes, checks, image]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: fail if any api job failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: 'echo "api CI ok (changes=${{ needs.changes.outputs.api }})"'
