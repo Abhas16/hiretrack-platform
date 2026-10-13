@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22"
+          node-version: "26"                                  # same major as the Dockerfile build stage (node:26-alpine)
           cache: npm                                          # cache ~/.npm between runs
           cache-dependency-path: services/web/package-lock.json   # new cache when the lockfile changes
 
