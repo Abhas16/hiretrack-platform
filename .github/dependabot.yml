@@ -1,0 +1,63 @@
+# Dependabot: opens a PR every Monday when a dependency has an update.
+# Each PR runs the normal CI (api.yml / web.yml), so a breaking update shows up as a red check.
+# Minor + patch updates are grouped into ONE PR per ecosystem; majors come alone (they need reading).
+version: 2
+
+updates:
+  # Python packages for the whole uv workspace (one uv.lock at the repo root).
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(api)"
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # npm packages for the React app.
+  - package-ecosystem: "npm"
+    directory: "/services/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(web)"
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Base images in both Dockerfiles (we pin by digest; Dependabot bumps tag + digest together).
+  - package-ecosystem: "docker"
+    directories:
+      - "/services/api"
+      - "/services/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(docker)"
+
+  # The postgres image in docker-compose.yml.
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(compose)"
+
+  # Action versions in .github/workflows (we pin by SHA; Dependabot updates the SHA + the # vX comment).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(ci)"
+    groups:
+      actions:
+        patterns: ["*"]
+
+# Terraform gets added here in M3, once infra/ exists.
