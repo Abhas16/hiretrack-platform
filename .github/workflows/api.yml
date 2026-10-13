@@ -1,0 +1,77 @@
+# HireTrack API CI: lint, typecheck, unit + integration tests, then build the image for amd64 and arm64.
+name: api
+
+on:
+  pull_request:
+    paths: &api-paths
+      - "services/api/**"
+      - "libs/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/api.yml"
+  push:
+    branches: [main]
+    paths: *api-paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint, typecheck, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Installs uv + Python 3.12 and caches downloaded packages (keyed on uv.lock).
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      # --frozen: fail if uv.lock is out of date instead of silently changing it.
+      - run: uv sync --frozen
+
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy libs/hiretrack_common/src services/api/src
+
+      - name: unit tests
+        run: uv run pytest -m "not integration"
+
+      # testcontainers starts a real Postgres using the Docker that's already on the runner.
+      - name: integration tests
+        run: uv run pytest -m integration
+
+  image:
+    name: docker build (${{ matrix.arch }})
+    needs: checks
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Context is the repo ROOT: the API image needs uv.lock and libs/hiretrack_common too.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: services/api/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          push: false
+          tags: hiretrack-api:${{ github.sha }}
+          cache-from: type=gha,scope=api-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=api-${{ matrix.arch }}
