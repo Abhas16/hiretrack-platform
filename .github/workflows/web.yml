@@ -1,0 +1,73 @@
+# CI for the React web app: lint, format, typecheck, tests, then build the Docker image
+# for amd64 (laptops, x86 nodes) and arm64 (AWS Graviton nodes). Nothing is pushed yet (M6).
+name: web
+
+on:
+  pull_request:
+    paths:
+      - "services/web/**"
+      - ".github/workflows/web.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/web/**"
+      - ".github/workflows/web.yml"
+
+# Least privilege: this workflow only needs to read the code.
+permissions:
+  contents: read
+
+# A new push to the same branch/PR cancels the run that's still going.
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint, typecheck, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm                                          # cache ~/.npm between runs
+          cache-dependency-path: services/web/package-lock.json   # new cache when the lockfile changes
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+
+  image:
+    name: docker build (${{ matrix.arch }})
+    needs: checks                     # only build images for code that passed the checks
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm  # native ARM runner: no slow emulation
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: services/web
+          platforms: linux/${{ matrix.arch }}
+          push: false
+          tags: hiretrack-web:${{ github.sha }}
+          # Reuse Docker layers between CI runs (stored in the GitHub Actions cache).
+          cache-from: type=gha,scope=web-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=web-${{ matrix.arch }}
