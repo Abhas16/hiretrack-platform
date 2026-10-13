@@ -3,13 +3,12 @@
 name: web
 
 on:
+  # Every PR starts this workflow (no `paths` here), so its required check always reports.
+  # The `changes` job below decides whether the real jobs run; a job skipped by `if:` counts as passed.
   pull_request:
-    paths:
-      - "services/web/**"
-      - ".github/workflows/web.yml"
   push:
     branches: [main]
-    paths:
+    paths:   # on main nothing is required, so skipping whole runs here just saves minutes
       - "services/web/**"
       - ".github/workflows/web.yml"
 
@@ -23,8 +22,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which folders did this PR/push touch? Outputs web=true/false for the jobs below.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read          # paths-filter lists a PR's changed files through the GitHub API
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'services/web/**'
+              - '.github/workflows/web.yml'
+
   checks:
-    name: lint, typecheck, test
+    name: web checks
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -35,7 +55,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22"
+          node-version: "26"                                  # same major as the Dockerfile build stage (node:26-alpine)
           cache: npm                                          # cache ~/.npm between runs
           cache-dependency-path: services/web/package-lock.json   # new cache when the lockfile changes
 
@@ -46,7 +66,7 @@ jobs:
       - run: npm test
 
   image:
-    name: docker build (${{ matrix.arch }})
+    name: web image (${{ matrix.arch }})
     needs: checks                     # only build images for code that passed the checks
     timeout-minutes: 20
     strategy:
@@ -71,3 +91,17 @@ jobs:
           # Reuse Docker layers between CI runs (stored in the GitHub Actions cache).
           cache-from: type=gha,scope=web-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=web-${{ matrix.arch }}
+
+  # The ONE check that branch protection requires for this workflow.
+  # Runs even when the jobs above were skipped, and fails only if one of them failed or was cancelled.
+  ok:
+    name: web-ok
+    needs: [changes, checks, image]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: fail if any web job failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: 'echo "web CI ok (changes=${{ needs.changes.outputs.web }})"'

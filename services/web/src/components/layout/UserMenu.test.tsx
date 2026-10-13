@@ -13,7 +13,6 @@ function renderMenu() {
 }
 
 afterEach(() => {
-  localStorage.clear();
   delete document.documentElement.dataset.theme;
 });
 
