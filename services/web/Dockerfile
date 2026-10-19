@@ -17,7 +17,7 @@ RUN npm run build
 
 # ---------- Stage 2: serve with nginx as non-root ----------
 # Node, node_modules and the source stay behind in stage 1; only dist/ (~5 MB) is copied.
-FROM nginxinc/nginx-unprivileged:1.31.6-alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:378d0c32f6562f7fd9629170797f57d2b953aa09be983b3daaf4809bb039ca00
 
 LABEL org.opencontainers.image.source="https://github.com/Abhas16/hiretrack-platform" \
       org.opencontainers.image.description="HireTrack web (React SPA on nginx)"
