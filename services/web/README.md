@@ -18,7 +18,8 @@ features/board/
 ```
 src/
 ├── app/            App.tsx (providers), router.tsx (lazy-loaded pages), queryClient.ts
-├── features/       auth, dashboard, board, applications, analytics, add-application, review-queue
+├── features/       auth, dashboard, board, applications, analytics, add-application,
+│                   review-queue (Smart Apply), match-profile, practice
 ├── components/     shared UI: layout/ (Sidebar, TopBar), ui/ (Button, Card, Modal…), toast/
 ├── lib/
 │   ├── api/        client.ts (the only file that calls fetch) + one file per API resource

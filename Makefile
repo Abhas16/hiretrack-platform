@@ -4,7 +4,7 @@
 ALEMBIC := uv run alembic -c services/api/alembic.ini
 
 .PHONY: help install lint format typecheck test test-unit test-integration migrate migration run-api
-.PHONY: run-scout run-scorer
+.PHONY: run-scout run-scorer run-reminders
 .PHONY: web-install web-dev web-check web-build
 
 help: ## Show targets
@@ -22,7 +22,7 @@ format: ## Auto-format and auto-fix lint
 	uv run ruff check --fix .
 
 typecheck: ## mypy (strict) on application code
-	uv run mypy libs/hiretrack_common/src services/api/src services/job-scout/src services/match-scorer/src
+	uv run mypy libs/hiretrack_common/src services/api/src services/job-scout/src services/match-scorer/src services/reminder-worker/src
 
 test-unit: ## Fast tests, no Docker needed
 	uv run pytest -m "not integration"
@@ -48,6 +48,9 @@ run-scout: ## One job-scout run: fetch boards in config/sources.yaml, store + qu
 
 run-scorer: ## Run the match-scorer worker (Ctrl+C to stop); ops endpoints on :9100
 	uv run python -m match_scorer
+
+run-reminders: ## One reminder-worker run: follow-ups for APPLIED apps quiet for 7+ days
+	uv run python -m reminder_worker
 
 # ---- Frontend (services/web) -------------------------------------------------------------
 WEB := cd services/web &&

@@ -1,0 +1,18 @@
+[project]
+name = "reminder-worker"
+version = "0.1.0"
+description = "HireTrack reminder-worker: CronJob that creates follow-up reminders for stale applications."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "hiretrack-common",
+]
+
+[project.scripts]
+reminder-worker = "reminder_worker.__main__:main"
+
+[tool.uv.sources]
+hiretrack-common = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"

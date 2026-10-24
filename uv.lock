@@ -8,6 +8,7 @@ members = [
     "hiretrack-common",
     "job-scout",
     "match-scorer",
+    "reminder-worker",
 ]
 
 [manifest.dependency-groups]
@@ -897,6 +898,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/a8/99/604f0b666d4c616d8
 wheels = [
     { url = "https://files.pythonhosted.org/packages/66/9d/c5731f6e3608663d4d3656fd8d3aecee8b509c3082818f5a13eae925baea/redis-8.1.0-py3-none-any.whl", hash = "sha256:a4fe1aac3d3b3cc791d4b3d5931c5a956045dc951ee74d1c913ee3ac4d2ee9fb", size = 560618, upload-time = "2026-07-30T08:50:58.497Z" },
 ]
+
+[[package]]
+name = "reminder-worker"
+version = "0.1.0"
+source = { editable = "services/reminder-worker" }
+dependencies = [
+    { name = "hiretrack-common" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "hiretrack-common", editable = "libs/hiretrack_common" }]
 
 [[package]]
 name = "requests"
