@@ -48,6 +48,26 @@ uv run ruff check . && uv run mypy libs/hiretrack_common/src services/api/src
 The integration suite also asserts that **Alembic migrations exactly match the ORM models**,
 so a forgotten `alembic revision --autogenerate` fails CI.
 
+## Smart Apply review queue
+
+Matches are created by `match-scorer`. The API only lets the user decide:
+
+| Endpoint | What it does |
+|---|---|
+| `GET /api/v1/matches?status=NEW&min_score=60` | review queue, best score first |
+| `GET /api/v1/matches/{id}` | one match, including the full job description |
+| `POST /api/v1/matches/{id}/approve` | creates an **APPLIED** application (source = the board) and returns `job_url`. The user then applies on the company's site; nothing is auto-submitted |
+| `POST /api/v1/matches/{id}/skip` | hide it |
+| `GET / PUT /api/v1/match-profile` | skills (weight 1-5), target roles, locations, remote, years of experience |
+| `GET /api/v1/match-profile/skills` | skill names from `config/skills.yaml` for the picker |
+
+Approve locks the match row (`SELECT ... FOR UPDATE`) and commits the application and the
+match update in **one** transaction, so a double click can't create two applications (the second
+click gets 409). Metrics: `matches_approved_total`, `matches_skipped_total`.
+
+`/readyz` checks only the database: the API never uses the queue, so a queue outage must not
+take the API out of the load balancer.
+
 ## Operations
 
 | Endpoint | Purpose | Touches DB? |

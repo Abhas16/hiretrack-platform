@@ -68,8 +68,8 @@ def client(settings: ApiSettings, engine: Engine) -> Iterator[TestClient]:
     with TestClient(create_app(settings)) as test_client:
         yield test_client
     with engine.begin() as connection:
-        # Every table hangs off users, so this empties the database between tests.
-        connection.execute(text("TRUNCATE users CASCADE"))
+        # Every table hangs off users (or the shared jobs table), so this empties the database.
+        connection.execute(text("TRUNCATE users, jobs CASCADE"))
 
 
 @pytest.fixture

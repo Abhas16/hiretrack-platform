@@ -1,0 +1,61 @@
+# Skill taxonomy used by match-scorer (and the profile screen's skill picker).
+#
+# key      canonical skill name (lower-case). Profiles and resume-variant tags use these names.
+# aliases  other ways job adverts write the same skill. Matched as whole words, case-insensitive.
+# weight   how much the skill counts as a GAP when a job asks for it and your profile lacks it
+#          (1 = nice to have ... 5 = core). Your own profile weights are used for matched skills.
+#
+# Mounted into pods as a ConfigMap in Kubernetes, so the taxonomy changes without a new image.
+skills:
+  # --- containers & orchestration ---
+  kubernetes: { aliases: [k8s, kubernetes, eks, aks, gke, openshift], weight: 5 }
+  docker: { aliases: [docker, containers, containerization, dockerfile], weight: 4 }
+  helm: { aliases: [helm, helm charts], weight: 3 }
+  kustomize: { aliases: [kustomize], weight: 2 }
+  service mesh: { aliases: [istio, linkerd, service mesh, envoy], weight: 2 }
+
+  # --- cloud ---
+  aws: { aliases: [aws, amazon web services, ec2, s3, iam, cloudformation], weight: 5 }
+  azure: { aliases: [azure, microsoft azure], weight: 4 }
+  gcp: { aliases: [gcp, google cloud, google cloud platform], weight: 4 }
+
+  # --- infrastructure as code & config ---
+  terraform: { aliases: [terraform, opentofu, hcl], weight: 5 }
+  ansible: { aliases: [ansible], weight: 3 }
+  pulumi: { aliases: [pulumi], weight: 2 }
+  cloudformation: { aliases: [cloudformation, cdk, aws cdk], weight: 2 }
+
+  # --- CI/CD & GitOps ---
+  ci/cd: { aliases: [ci/cd, ci cd, continuous integration, continuous delivery, cicd], weight: 4 }
+  github actions: { aliases: [github actions], weight: 3 }
+  jenkins: { aliases: [jenkins], weight: 3 }
+  gitlab ci: { aliases: [gitlab ci, gitlab-ci, gitlab pipelines], weight: 3 }
+  azure devops: { aliases: [azure devops, azure pipelines], weight: 3 }
+  argo cd: { aliases: [argocd, argo cd, argo rollouts, gitops, flux, fluxcd], weight: 3 }
+
+  # --- observability ---
+  prometheus: { aliases: [prometheus, promql, alertmanager], weight: 4 }
+  grafana: { aliases: [grafana, loki, tempo], weight: 3 }
+  opentelemetry: { aliases: [opentelemetry, otel, tracing, jaeger], weight: 2 }
+  datadog: { aliases: [datadog], weight: 2 }
+  elk: { aliases: [elk, elasticsearch, logstash, kibana, opensearch], weight: 2 }
+  sre: { aliases: [sre, site reliability, slo, slos, error budget, incident response, on-call], weight: 3 }
+
+  # --- languages & scripting ---
+  python: { aliases: [python], weight: 4 }
+  go: { aliases: [golang], weight: 3 }  # not "go": too common as an English word
+  bash: { aliases: [bash, shell scripting, shell scripts], weight: 4 }
+  typescript: { aliases: [typescript, javascript, node.js, nodejs], weight: 2 }
+  java: { aliases: [java], weight: 2 }
+
+  # --- OS, networking, data ---
+  linux: { aliases: [linux, unix, ubuntu, rhel, debian], weight: 4 }
+  networking: { aliases: [networking, tcp/ip, dns, vpc, load balancing, load balancer], weight: 3 }
+  postgresql: { aliases: [postgresql, postgres, rds, mysql, sql], weight: 2 }
+  redis: { aliases: [redis, memcached], weight: 1 }
+  kafka: { aliases: [kafka, sqs, rabbitmq, message queue, message queues], weight: 2 }
+
+  # --- security ---
+  devsecops: { aliases: [devsecops, security scanning, sast, dast, trivy, snyk, sonarqube], weight: 3 }
+  secrets management: { aliases: [vault, hashicorp vault, secrets manager, key vault], weight: 2 }
+  git: { aliases: [git, github, gitlab, bitbucket], weight: 3 }

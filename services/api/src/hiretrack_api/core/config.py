@@ -1,6 +1,7 @@
 """API settings. Every value comes from an environment variable of the same name (upper-case)."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
@@ -31,6 +32,9 @@ class ApiSettings(DatabaseSettings):
     anthropic_model: str = "claude-opus-5-5"
     anthropic_effort: Literal["low", "medium", "high"] = "low"
     llm_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+
+    # Smart Apply: the skill taxonomy, offered as choices on the match-profile screen.
+    skills_file: Path = Path("config/skills.yaml")
 
     @field_validator("jwt_secret")
     @classmethod

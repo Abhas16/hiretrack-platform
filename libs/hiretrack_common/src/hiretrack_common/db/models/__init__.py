@@ -4,6 +4,8 @@ from hiretrack_common.db.models.application import Application, ApplicationStatu
 from hiretrack_common.db.models.company import Company
 from hiretrack_common.db.models.contact import Contact
 from hiretrack_common.db.models.interview import Interview
+from hiretrack_common.db.models.job import Job
+from hiretrack_common.db.models.match import Match, MatchProfile
 from hiretrack_common.db.models.note import Note
 from hiretrack_common.db.models.practice import PracticeSession, PracticeTurn
 from hiretrack_common.db.models.reminder import Reminder
@@ -16,6 +18,9 @@ __all__ = [
     "Company",
     "Contact",
     "Interview",
+    "Job",
+    "Match",
+    "MatchProfile",
     "Note",
     "PracticeSession",
     "PracticeTurn",

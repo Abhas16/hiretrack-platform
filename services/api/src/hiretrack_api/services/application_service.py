@@ -120,6 +120,13 @@ class ApplicationService:
 
     # ---- writes ------------------------------------------------------------------------
     def create(self, user_id: uuid.UUID, data: ApplicationCreate) -> Application:
+        application = self.build(user_id, data)
+        self._uow.commit()
+        return application
+
+    def build(self, user_id: uuid.UUID, data: ApplicationCreate) -> Application:
+        """Add the application (and its first history row) WITHOUT committing, so a caller
+        like the review queue can commit it together with its own change, atomically."""
         company = self._resolve_company(user_id, data.company_id, data.company_name)
         variant = self._get_variant(user_id, data.resume_variant_id)
         now = self._now()
@@ -151,7 +158,6 @@ class ApplicationService:
                 changed_at=now,
             )
         )
-        self._uow.commit()
         return application
 
     def update(

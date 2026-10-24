@@ -2,7 +2,7 @@
 # One lockfile (uv.lock) pins every Python dependency for all services.
 
 [tool.uv.workspace]
-members = ["libs/hiretrack_common", "services/api"]
+members = ["libs/hiretrack_common", "services/api", "services/job-scout", "services/match-scorer"]
 
 [dependency-groups]
 dev = [
@@ -12,6 +12,8 @@ dev = [
     "ruff==0.12.4",
     "mypy==2.4.0",
     "types-pyyaml==6.0.12.20260906",
+    "fakeredis==2.40.0",
+    "types-boto3==1.43.118",
 ]
 
 [tool.ruff]
@@ -22,7 +24,7 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "N"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["hiretrack_common", "hiretrack_api"]
+known-first-party = ["hiretrack_common", "hiretrack_api", "job_scout", "match_scorer"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101", "S105", "S106", "S311"]
@@ -31,7 +33,7 @@ known-first-party = ["hiretrack_common", "hiretrack_api"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-mypy_path = ["libs/hiretrack_common/src", "services/api/src"]
+mypy_path = ["libs/hiretrack_common/src", "services/api/src", "services/job-scout/src", "services/match-scorer/src"]
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
@@ -40,7 +42,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "-ra --import-mode=importlib"
-testpaths = ["libs/hiretrack_common/tests", "services/api/tests"]
+testpaths = ["libs/hiretrack_common/tests", "services/api/tests", "services/job-scout/tests", "services/match-scorer/tests"]
 markers = ["integration: needs Docker (spins up Postgres with testcontainers)"]
 filterwarnings = [
     "ignore::DeprecationWarning:testcontainers.*",
