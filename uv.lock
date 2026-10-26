@@ -9,6 +9,7 @@ members = [
     "job-scout",
     "match-scorer",
     "reminder-worker",
+    "triage-bot",
 ]
 
 [manifest.dependency-groups]
@@ -1037,6 +1038,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a1/49/9c618aff1c50121d183cdfbc3a4a5cf2727a2cde1893efe6ca55c7009196/testcontainers-4.10.0.tar.gz", hash = "sha256:03f85c3e505d8b4edeb192c72a961cebbcba0dd94344ae778b4a159cb6dcf8d3", size = 63327, upload-time = "2025-04-02T16:13:27.582Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1c/0a/824b0c1ecf224802125279c3effff2e25ed785ed046e67da6e53d928de4c/testcontainers-4.10.0-py3-none-any.whl", hash = "sha256:31ed1a81238c7e131a2a29df6db8f23717d892b592fa5a1977fd0dcd0c23fc23", size = 107414, upload-time = "2025-04-02T16:13:25.785Z" },
+]
+
+[[package]]
+name = "triage-bot"
+version = "0.1.0"
+source = { editable = "services/triage-bot" }
+dependencies = [
+    { name = "anthropic" },
+    { name = "fastapi" },
+    { name = "hiretrack-common" },
+    { name = "httpx" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", specifier = "==1.11.0" },
+    { name = "fastapi", specifier = "==0.116.1" },
+    { name = "hiretrack-common", editable = "libs/hiretrack_common" },
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "uvicorn", specifier = "==0.35.0" },
 ]
 
 [[package]]

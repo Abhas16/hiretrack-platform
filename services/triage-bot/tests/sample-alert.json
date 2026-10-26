@@ -1,0 +1,17 @@
+{
+  "version": "4",
+  "status": "firing",
+  "receiver": "triage-bot",
+  "groupKey": "{}:{alertname=\"ApiHighErrorRate\"}",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": { "alertname": "ApiHighErrorRate", "severity": "critical", "namespace": "hiretrack", "app": "api" },
+      "annotations": { "summary": "API 5xx above 5% for 5m", "description": "Availability SLO error budget is burning fast." },
+      "startsAt": "2026-10-20T06:00:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus:9090/graph?g0.expr=sum%28rate%28http_requests_total%7Bstatus%3D~%225..%22%7D%5B5m%5D%29%29&g0.tab=1",
+      "fingerprint": "a1b2c3d4e5f60718"
+    }
+  ]
+}

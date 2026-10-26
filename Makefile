@@ -4,7 +4,7 @@
 ALEMBIC := uv run alembic -c services/api/alembic.ini
 
 .PHONY: help install lint format typecheck test test-unit test-integration migrate migration run-api
-.PHONY: run-scout run-scorer run-reminders
+.PHONY: run-scout run-scorer run-reminders run-triage seed
 .PHONY: web-install web-dev web-check web-build
 
 help: ## Show targets
@@ -22,7 +22,7 @@ format: ## Auto-format and auto-fix lint
 	uv run ruff check --fix .
 
 typecheck: ## mypy (strict) on application code
-	uv run mypy libs/hiretrack_common/src services/api/src services/job-scout/src services/match-scorer/src services/reminder-worker/src
+	uv run mypy libs/hiretrack_common/src services/api/src services/job-scout/src services/match-scorer/src services/reminder-worker/src services/triage-bot/src
 
 test-unit: ## Fast tests, no Docker needed
 	uv run pytest -m "not integration"
@@ -51,6 +51,12 @@ run-scorer: ## Run the match-scorer worker (Ctrl+C to stop); ops endpoints on :9
 
 run-reminders: ## One reminder-worker run: follow-ups for APPLIED apps quiet for 7+ days
 	uv run python -m reminder_worker
+
+run-triage: ## Run triage-bot on http://localhost:8080 (dry run unless GITHUB_TOKEN/GITHUB_REPO set)
+	uv run python -m triage_bot
+
+seed: ## Demo data through the running API (+ Smart Apply jobs/matches in the DB): make seed
+	uv run python scripts/seed-data.py --with-smart-apply
 
 # ---- Frontend (services/web) -------------------------------------------------------------
 WEB := cd services/web &&
