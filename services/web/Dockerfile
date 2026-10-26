@@ -17,10 +17,16 @@ RUN npm run build
 
 # ---------- Stage 2: serve with nginx as non-root ----------
 # Node, node_modules and the source stay behind in stage 1; only dist/ (~5 MB) is copied.
-FROM nginxinc/nginx-unprivileged:1.31.6-alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
 
 LABEL org.opencontainers.image.source="https://github.com/Abhas16/hiretrack-platform" \
       org.opencontainers.image.description="HireTrack web (React SPA on nginx)"
+
+# Pick up Alpine security fixes released after the base image was built (Trivy flagged
+# fixed-upstream CVEs in curl/expat/brotli). Trade-off: the build is a little less
+# reproducible, so the pinned digest is still bumped by Dependabot as the main fix.
+USER root
+RUN apk upgrade --no-cache
 
 # Our server rules replace nginx's default site (SPA fallback + caching).
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -31,7 +37,10 @@ COPY --chmod=0755 docker/40-runtime-config.sh /docker-entrypoint.d/40-runtime-co
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# The image already runs as uid 101 (nginx). Non-root can't bind ports < 1024, hence 8080.
+# The base image already runs as uid 101 (nginx); saying it explicitly documents it and lets
+# scanners (Trivy DS-0002) and admission policies verify it. Non-root can't bind ports < 1024,
+# hence 8080.
+USER 101
 EXPOSE 8080
 
 # busybox wget is included in alpine (no curl).

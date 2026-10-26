@@ -117,9 +117,35 @@ jobs:
           build-args: SERVICE=${{ matrix.service }}
           platforms: linux/${{ matrix.arch }}
           push: false
+          load: true                 # keep the image in the local daemon for scanning
           tags: hiretrack-${{ matrix.service }}:${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.service }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ matrix.arch }}
+
+      # Scan the image just built (from the local Docker daemon). A CRITICAL vulnerability that
+      # has a fix available fails the job; unfixed ones are reported but can't be acted on yet.
+      - name: trivy image scan
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+          image --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 hiretrack-${{ matrix.service }}:${{ github.sha }}
+          && docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+          image --quiet --severity CRITICAL --ignore-unfixed --exit-code 1 hiretrack-${{ matrix.service }}:${{ github.sha }}
+
+      # SBOM = the list of every package inside the image. Kept as a build artifact, so when a
+      # new CVE is announced you can check which images contain the package without rebuilding.
+      - name: SBOM (SPDX JSON)
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/out"
+          anchore/syft:v1.55.0@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a
+          hiretrack-${{ matrix.service }}:${{ github.sha }} -o spdx-json=/out/sbom.spdx.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-${{ matrix.service }}-${{ matrix.arch }}
+          path: sbom.spdx.json
+          retention-days: 30
 
   # The ONE check that branch protection requires for this workflow.
   # Runs even when the jobs above were skipped, and fails only if one of them failed or was cancelled.

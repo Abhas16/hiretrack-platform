@@ -1,0 +1,14 @@
+# Prometheus Pushgateway (chart 3.9.1): holds the metrics the CronJobs (job-scout,
+# reminder-worker) push just before they exit. Only for batch jobs: a long-running service
+# pushing here would hide when it dies (its last values stay forever). Namespace: monitoring.
+# The app pushes to http://prometheus-pushgateway.monitoring.svc:9091 (PUSHGATEWAY_URL).
+serviceMonitor:
+  enabled: true
+  # Keep the job/instance labels the CronJob pushed, instead of the Pushgateway pod's own.
+  honorLabels: true
+  additionalLabels:
+    release: kube-prometheus-stack
+
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits: { memory: 64Mi }

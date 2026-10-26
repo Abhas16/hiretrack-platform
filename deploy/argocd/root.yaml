@@ -1,0 +1,24 @@
+# App of apps: the ONE Application applied by hand. It points at deploy/argocd/apps/, so every
+# Application in that folder is created and kept in sync from Git.
+#
+#   kubectl apply -f deploy/argocd/projects/hiretrack.yaml -f deploy/argocd/root.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io   # deleting root deletes its apps (teardown)
+spec:
+  project: hiretrack
+  source:
+    repoURL: https://github.com/Abhas16/hiretrack-platform.git
+    targetRevision: main
+    path: deploy/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true                # an app file removed from Git -> the app is removed
+      selfHeal: true             # someone edits an Application by hand -> Git wins

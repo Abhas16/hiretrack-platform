@@ -1,7 +1,15 @@
 {{- if .Values.api.enabled }}
 {{- $name := "api" }}
+{{- $rollout := .Values.api.canary.enabled }}
+# With api.canary.enabled this is an Argo Rollouts "Rollout" (a Deployment with a canary
+# strategy); otherwise a plain Deployment with a rolling update. The pod template is the same.
+{{- if $rollout }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+{{- else }}
 apiVersion: apps/v1
 kind: Deployment
+{{- end }}
 metadata:
   name: hiretrack-{{ $name }}
   labels:
@@ -11,8 +19,29 @@ spec:
   replicas: {{ .Values.api.replicas }}
   {{- end }}
   revisionHistoryLimit: 5
+  {{- if $rollout }}
+  strategy:
+    canary:
+      # Replica-based canary: the share of traffic follows the share of pods behind the
+      # Service. 20% -> wait -> 50% -> wait -> 100%, while the analysis below runs the whole
+      # time. If the 5xx rate goes over the limit, the Rollout aborts and scales the canary
+      # back to zero on its own: no kubectl, no human.
+      maxSurge: 1
+      maxUnavailable: 0
+      analysis:
+        templates:
+          - templateName: hiretrack-api-error-rate
+        startingStep: 1          # start measuring once the first canary pods are serving
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      steps:
+        {{- toYaml .Values.api.canary.steps | nindent 8 }}
+  {{- else }}
   strategy:
     rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }   # never below the current capacity
+  {{- end }}
   selector:
     matchLabels:
       {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 6 }}
@@ -102,7 +131,11 @@ metadata:
   labels:
     {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
 spec:
+  {{- if $rollout }}
+  scaleTargetRef: { apiVersion: argoproj.io/v1alpha1, kind: Rollout, name: hiretrack-{{ $name }} }
+  {{- else }}
   scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: hiretrack-{{ $name }} }
+  {{- end }}
   minReplicas: {{ .Values.api.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
   metrics:

@@ -57,9 +57,14 @@ def test_success_is_acked_and_failure_is_not() -> None:
     assert queue.acked == ["a"]  # "b" stays unacked -> redelivered later -> DLQ eventually
 
 
-def test_malformed_messages_are_dropped() -> None:
-    queue = run([[msg("x", {"nope": 1}), msg("y", {"job_id": "not-a-uuid"})]], lambda _: 0)
-    assert queue.acked == ["x", "y"]
+def test_malformed_messages_are_left_for_the_dlq() -> None:
+    bad = [
+        msg("x", {"nope": 1}),
+        msg("y", {"job_id": "not-a-uuid"}),
+        msg("z", {"_unparseable": "<html>"}),  # what the queue gives for non-JSON bodies
+    ]
+    queue = run([bad], lambda _: 0)
+    assert queue.acked == []  # never acked -> retried -> dead-letter queue
 
 
 def test_queue_errors_do_not_kill_the_worker() -> None:

@@ -4,7 +4,11 @@
 deploy/helm/hiretrack/      the app chart: api, web, migrate Job, match-scorer, 2 CronJobs,
                             triage-bot, ServiceAccounts, Ingress, NetworkPolicies,
                             ServiceMonitors, PrometheusRule (SLOs + alerts), Grafana dashboard
+deploy/argocd/              GitOps: AppProject, app of apps, one Application per component
+deploy/platform/            values for the add-ons (kube-prometheus-stack, Loki, Alloy,
+                            Pushgateway, Argo Rollouts, Argo CD), chart versions pinned
 docker/python-service.Dockerfile   one image recipe for the 4 Python workers (SERVICE build arg)
+scripts/chaos/              chaos experiments with expected outcomes
 docs/runbooks/              one page per alert (linked from each alert's runbook_url)
 ```
 

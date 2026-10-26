@@ -12,7 +12,7 @@ from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 
-from hiretrack_common.queue.base import Message, QueueError
+from hiretrack_common.queue.base import Message, QueueError, parse_body
 
 SQS_MAX_BATCH = 10  # SendMessageBatch / ReceiveMessage limit
 SQS_MAX_WAIT = 20  # long-polling limit in seconds
@@ -57,7 +57,7 @@ class SqsQueue:
         return [
             Message(
                 id=item["MessageId"],
-                body=json.loads(item["Body"]),
+                body=parse_body(item["Body"]),
                 receive_count=int(item.get("Attributes", {}).get("ApproximateReceiveCount", 1)),
                 receipt=item["ReceiptHandle"],
             )

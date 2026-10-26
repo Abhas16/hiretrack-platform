@@ -59,6 +59,18 @@ api:
     targetCPUUtilizationPercentage: 70
   pdb:
     minAvailable: 1
+  # Progressive delivery with Argo Rollouts (needs the Argo Rollouts controller + CRDs).
+  canary:
+    enabled: false
+    prometheusUrl: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+    maxErrorRatio: 0.05          # canary pods may return at most 5% 5xx
+    analysisCount: 8             # measurements over the rollout (1 per minute)
+    steps:
+      - setWeight: 20
+      - pause: { duration: 3m }
+      - setWeight: 50
+      - pause: { duration: 3m }
+      - setWeight: 100
 
 web:
   enabled: true

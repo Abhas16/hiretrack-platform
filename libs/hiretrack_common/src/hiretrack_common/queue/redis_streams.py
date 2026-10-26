@@ -15,7 +15,7 @@ from typing import Any
 
 import redis
 
-from hiretrack_common.queue.base import Message, QueueError
+from hiretrack_common.queue.base import Message, QueueError, parse_body
 from hiretrack_common.queue.metrics import QUEUE_MESSAGES_DEAD_LETTERED
 
 logger = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ class RedisStreamQueue:
     def _to_message(entry_id: str, fields: dict[str, str], receive_count: int) -> Message:
         return Message(
             id=entry_id,
-            body=json.loads(fields["body"]),
+            body=parse_body(fields.get("body", "")),
             receive_count=receive_count,
             receipt=entry_id,
         )

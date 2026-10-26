@@ -1,0 +1,28 @@
+{{- if and .Values.api.enabled .Values.api.canary.enabled }}
+# What "healthy" means for an API canary: the 5xx ratio of the CANARY pods only (pods whose
+# name contains the new ReplicaSet's hash), measured every minute. Two failed measurements
+# abort the rollout. Fault injection (FAULT_INJECTION_RATE=0.3) is the way to demo this.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: hiretrack-api-error-rate
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: canary-hash
+  metrics:
+    - name: error-rate
+      interval: 1m
+      count: {{ .Values.api.canary.analysisCount }}
+      failureLimit: 1            # 2 bad measurements = abort
+      # No traffic yet (division by zero -> NaN/empty) counts as success, not failure.
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] <= {{ .Values.api.canary.maxErrorRatio }}
+      provider:
+        prometheus:
+          address: {{ .Values.api.canary.prometheusUrl }}
+          query: |
+            sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}", pod=~"hiretrack-api-{{ "{{" }}args.canary-hash{{ "}}" }}-.*", route=~"/api/.*", status=~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}", pod=~"hiretrack-api-{{ "{{" }}args.canary-hash{{ "}}" }}-.*", route=~"/api/.*"}[2m]))
+{{- end }}

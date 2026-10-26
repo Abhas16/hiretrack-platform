@@ -1,0 +1,70 @@
+# Grafana Alloy (chart 1.14.3): reads every pod's stdout/stderr through the Kubernetes API and
+# ships it to Loki. (Promtail is end-of-life; Alloy replaces it.) Namespace: monitoring.
+#
+# Labels kept on each stream: namespace, pod, container, app, level. These are exactly what
+# triage-bot uses to find an alert's logs. Keep labels few and low-cardinality: never put
+# request IDs or user IDs in labels (they stay inside the JSON line, searchable with | json).
+alloy:
+  configMap:
+    content: |
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        // app = the pod's "app" label, else app.kubernetes.io/name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          regex         = "(.+)"
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.process.json.receiver]
+      }
+
+      // Our services log one JSON object per line; lift "level" into a label so Grafana
+      // can filter ERROR lines fast. Non-JSON lines pass through unchanged.
+      loki.process "json" {
+        stage.json {
+          expressions = { level = "level" }
+        }
+        stage.labels {
+          values = { level = "" }
+        }
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.monitoring.svc/loki/api/v1/push"
+        }
+      }
+
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { memory: 256Mi }
+
+controller:
+  type: deployment               # loki.source.kubernetes uses the API, so no DaemonSet needed
+  replicas: 1

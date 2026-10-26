@@ -30,7 +30,7 @@ location mismatch, so the UI can show *why* a score is low. Skills come from `co
 |---|---|
 | Success | message acked (deleted) |
 | Handler raises (DB down, bug) | not acked → visible again after `QUEUE_VISIBILITY_TIMEOUT_SECONDS` → retried; after `QUEUE_MAX_RECEIVES` it goes to the dead-letter queue |
-| Malformed message | acked + logged (retrying can't fix it) |
+| Malformed message (not JSON, no valid `job_id`) | logged, **not** acked, so after the retries it sits in the DLQ as evidence (the worker never crashes on it) |
 | Same job delivered twice | profiles that already have a match are skipped, and `UNIQUE(user_id, job_id)` + `ON CONFLICT DO NOTHING` covers two workers racing |
 | SIGTERM (scale-down, rollout) | finishes the current message, stops receiving, exits |
 

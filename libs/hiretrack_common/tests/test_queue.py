@@ -107,6 +107,13 @@ def test_sqs_receive_and_ack() -> None:
         queue.ack(message)
 
 
+def test_non_json_bodies_never_crash_the_consumer(redis_queue: RedisStreamQueue) -> None:
+    redis_queue._redis.xadd("jobs", {"body": "<html>not json</html>"})
+    redis_queue._redis.xadd("jobs", {"body": "[1, 2]"})
+    bodies = [m.body for m in redis_queue.receive(wait_seconds=0)]
+    assert bodies == [{"_unparseable": "<html>not json</html>"}, {"_unparseable": "[1, 2]"}]
+
+
 def test_sqs_errors_become_queue_errors() -> None:
     client = boto3.client("sqs", region_name="ap-south-1")
     queue = SqsQueue(client, QUEUE_URL, visibility_timeout_seconds=60)

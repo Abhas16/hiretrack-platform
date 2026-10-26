@@ -69,7 +69,8 @@ spec:
             description: 'p95 is {{ "{{" }} $value | humanizeDuration {{ "}}" }} (SLO {{ $slo.latencyP95Seconds }}s).'
             runbook_url: {{ $runbooks }}/ApiLatencyP95High.md
         - alert: ApiNoReadyPods
-          expr: sum(kube_deployment_status_replicas_available{namespace="{{ $ns }}", deployment="hiretrack-api"}) < 1
+          # Pod readiness (not Deployment status), so it also works when the API is a Rollout.
+          expr: sum(kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"hiretrack-api-.*"}) < 1
           for: 2m
           labels: { severity: critical, namespace: {{ $ns }}, app: api }
           annotations:
@@ -100,6 +101,15 @@ spec:
           labels: { severity: warning, namespace: {{ $ns }}, app: job-scout }
           annotations:
             summary: job-scout has not succeeded for 13 hours
+            runbook_url: {{ $runbooks }}/ScoutRunsStale.md
+        - alert: ScoutSourceFailing
+          # The Pushgateway keeps the LAST run's values, so "> 0 for 13h" means the same board
+          # failed in every run for ~3 runs (every 6h) in a row: its slug probably changed.
+          expr: max by (source) (scout_source_errors_total) > 0
+          for: 13h
+          labels: { severity: info, namespace: {{ $ns }}, app: job-scout }
+          annotations:
+            summary: 'A {{ "{{" }} $labels.source {{ "}}" }} board has failed 3 scout runs in a row'
             runbook_url: {{ $runbooks }}/ScoutRunsStale.md
         - alert: ReminderWorkerStale
           expr: time() - max(reminder_worker_last_success_timestamp) > 26 * 3600

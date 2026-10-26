@@ -3,7 +3,9 @@
 success          -> ack (message deleted)
 handler raised   -> NO ack: the message becomes visible again after the visibility timeout
                     and is retried; after QUEUE_MAX_RECEIVES tries it lands in the DLQ
-malformed body   -> ack and log: retrying can never fix it, so don't waste 5 attempts
+malformed body   -> NO ack either, and logged: it can never succeed, so after the retries it
+                    lands in the DLQ, where it is kept as evidence (dropping it would hide
+                    whatever produced it)
 SIGTERM          -> finish the current message, stop taking new ones, exit
 """
 
@@ -67,9 +69,12 @@ class JobConsumer:
         try:
             job_id = uuid.UUID(str(message.body["job_id"]))
         except (KeyError, ValueError):
-            logger.error("dropping malformed message", extra={"message_id": message.id})
+            logger.error(
+                "malformed message, leaving it for the dead-letter queue",
+                extra={"message_id": message.id, "receive_count": message.receive_count},
+            )
+            QUEUE_MESSAGES_FAILED.labels(self._queue.name).inc()
             JOBS_PROCESSED.labels("invalid").inc()
-            self._safe_ack(message)
             return
 
         try:

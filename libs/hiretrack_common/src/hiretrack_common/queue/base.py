@@ -1,11 +1,26 @@
 """The interface every queue backend implements, so services never import redis or boto3."""
 
+import json
 from dataclasses import dataclass
 from typing import Any, Protocol
 
 
 class QueueError(Exception):
     """The backend could not be reached or rejected the request."""
+
+
+UNPARSEABLE_KEY = "_unparseable"
+
+
+def parse_body(raw: str) -> dict[str, Any]:
+    """Decode a message body without ever raising. A body that isn't a JSON object becomes
+    {"_unparseable": <start of the text>}: the consumer then treats it as malformed instead of
+    crashing the worker (which would crash-loop on the same message until the DLQ)."""
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        return {UNPARSEABLE_KEY: raw[:200]}
+    return body if isinstance(body, dict) else {UNPARSEABLE_KEY: raw[:200]}
 
 
 @dataclass(frozen=True)
