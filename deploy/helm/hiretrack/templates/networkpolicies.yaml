@@ -1,0 +1,50 @@
+{{- if .Values.networkPolicies.enabled }}
+{{- /*
+Default deny for ingress (incoming) traffic, then allow only what's needed.
+Egress is left open: pods must reach RDS, SQS, the job boards and GitHub, whose IPs change.
+(Requires a CNI that enforces NetworkPolicy, e.g. the VPC CNI with network policy enabled.)
+*/ -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hiretrack-default-deny-ingress
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+# api + web: reachable from anywhere (the load balancer targets pod IPs directly).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hiretrack-allow-public
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: ["api", "web"] }
+  policyTypes: ["Ingress"]
+  ingress:
+    - {}
+---
+# match-scorer metrics and triage-bot webhook: only from the monitoring namespace
+# (Prometheus scrapes, Alertmanager posts alerts).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hiretrack-allow-monitoring
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: ["match-scorer", "triage-bot"] }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.monitoringNamespace }}
+{{- end }}

@@ -1,4 +1,6 @@
-# HireTrack local stack: postgres -> migrate (one-shot) -> api -> web.
+# HireTrack local stack:
+#   postgres + redis -> migrate (one-shot) -> api, match-scorer, triage-bot -> web
+#   job-scout / reminder-worker (profile "jobs", run on demand like a CronJob)
 # Usage (repo root):  docker compose up --build        Stop: docker compose down
 # Secrets come from the .env file in the repo root (git-ignored), never from this file.
 name: hiretrack
@@ -9,6 +11,15 @@ x-api-image: &api-image
     context: .                          # repo root: the API image needs libs/ and uv.lock
     dockerfile: services/api/Dockerfile
   image: hiretrack-api:dev              # migrate and api share this one image
+
+# The four Python workers share one Dockerfile; the SERVICE build arg picks the package.
+x-worker-build: &worker-build
+  context: .
+  dockerfile: docker/python-service.Dockerfile
+
+x-queue-env: &queue-env
+  QUEUE_BACKEND: redis
+  REDIS_URL: redis://redis:6379/0
 
 x-db-env: &db-env
   DB_HOST: postgres                     # the service name below, NOT localhost
@@ -63,6 +74,91 @@ services:
         condition: service_completed_successfully   # tables exist (exit code 0)
     restart: unless-stopped
 
+  # ---- Smart Apply ---------------------------------------------------------------------
+  # Locally the queue is Redis Streams; in AWS it is SQS (QUEUE_BACKEND=sqs). Same code.
+  redis:
+    image: redis:8.2.2-alpine
+    command: ["redis-server", "--appendonly", "yes"]   # keep queued messages across restarts
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  match-scorer:
+    build:
+      <<: *worker-build
+      args: { SERVICE: match-scorer }
+    image: hiretrack-match-scorer:dev
+    environment:
+      <<: [*db-env, *queue-env]
+      LOG_FORMAT: json
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "9100:9100"                     # /healthz /readyz /metrics
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/healthz', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    stop_grace_period: 30s              # time to finish the current message after SIGTERM
+    restart: unless-stopped
+
+  # CronJobs in Kubernetes; here you run them on demand:
+  #   docker compose run --rm job-scout        docker compose run --rm reminder-worker
+  job-scout:
+    build:
+      <<: *worker-build
+      args: { SERVICE: job-scout }
+    image: hiretrack-job-scout:dev
+    profiles: ["jobs"]                  # not started by `docker compose up`
+    environment:
+      <<: [*db-env, *queue-env]
+      LOG_FORMAT: json
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  reminder-worker:
+    build:
+      <<: *worker-build
+      args: { SERVICE: reminder-worker }
+    image: hiretrack-reminder-worker:dev
+    profiles: ["jobs"]
+    environment:
+      <<: *db-env
+      LOG_FORMAT: json
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  triage-bot:
+    build:
+      <<: *worker-build
+      args: { SERVICE: triage-bot }
+    image: hiretrack-triage-bot:dev
+    environment:
+      LOG_FORMAT: json
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:-local-dev-webhook-token-123456}
+      GITHUB_REPO: ${GITHUB_REPO:-}     # both empty = dry run: issues are only logged
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    ports:
+      - "8081:8080"                     # 8080 on the laptop is the web container
+    restart: unless-stopped
+
   web:
     build:
       context: services/web
@@ -80,3 +176,4 @@ services:
 
 volumes:
   pgdata:
+  redisdata:

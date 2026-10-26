@@ -1,4 +1,5 @@
-# HireTrack API CI: lint, typecheck, unit + integration tests, then build the image for amd64 and arm64.
+# HireTrack Python CI (API + workers share one uv workspace): lint, typecheck, unit + integration
+# tests, then build all five images for amd64 and arm64.
 name: api
 
 on:
@@ -9,7 +10,13 @@ on:
     branches: [main]
     paths:   # on main nothing is required, so skipping whole runs here just saves minutes
       - "services/api/**"
+      - "services/job-scout/**"
+      - "services/match-scorer/**"
+      - "services/reminder-worker/**"
+      - "services/triage-bot/**"
       - "libs/**"
+      - "config/**"
+      - "docker/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/api.yml"
@@ -39,7 +46,13 @@ jobs:
           filters: |
             api:
               - 'services/api/**'
+              - 'services/job-scout/**'
+              - 'services/match-scorer/**'
+              - 'services/reminder-worker/**'
+              - 'services/triage-bot/**'
               - 'libs/**'
+              - 'config/**'
+              - 'docker/**'
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/api.yml'
@@ -64,7 +77,9 @@ jobs:
 
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy libs/hiretrack_common/src services/api/src
+      - run: >-
+          uv run mypy libs/hiretrack_common/src services/api/src services/job-scout/src
+          services/match-scorer/src services/reminder-worker/src services/triage-bot/src
 
       - name: unit tests
         run: uv run pytest -m "not integration"
@@ -74,13 +89,16 @@ jobs:
         run: uv run pytest -m integration
 
   image:
-    name: api image (${{ matrix.arch }})
+    name: ${{ matrix.service }} image (${{ matrix.arch }})
     needs: checks
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     strategy:
+      fail-fast: false             # one broken image shouldn't hide the others' results
       matrix:
-        include:
+        service: [api, job-scout, match-scorer, reminder-worker, triage-bot]
+        arch: [amd64, arm64]
+        include:                   # adds the runner to every combination with that arch
           - arch: amd64
             runner: ubuntu-24.04
           - arch: arm64
@@ -90,16 +108,18 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Context is the repo ROOT: the API image needs uv.lock and libs/hiretrack_common too.
+      # Context is the repo ROOT: the images need uv.lock, libs/ and config/ too.
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          file: services/api/Dockerfile
+          # The API has its own Dockerfile (it ships migrations); the workers share one.
+          file: ${{ matrix.service == 'api' && 'services/api/Dockerfile' || 'docker/python-service.Dockerfile' }}
+          build-args: SERVICE=${{ matrix.service }}
           platforms: linux/${{ matrix.arch }}
           push: false
-          tags: hiretrack-api:${{ github.sha }}
-          cache-from: type=gha,scope=api-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=api-${{ matrix.arch }}
+          tags: hiretrack-${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ matrix.arch }}
 
   # The ONE check that branch protection requires for this workflow.
   # Runs even when the jobs above were skipped, and fails only if one of them failed or was cancelled.

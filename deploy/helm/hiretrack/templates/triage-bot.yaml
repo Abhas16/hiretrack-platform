@@ -1,0 +1,68 @@
+{{- if .Values.triageBot.enabled }}
+{{- $name := "triage-bot" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 8 }}
+    spec:
+      serviceAccountName: hiretrack-{{ $name }}
+      securityContext:
+        {{- include "hiretrack.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: triage-bot
+          image: {{ include "hiretrack.image" (dict "root" . "repo" "hiretrack-triage-bot") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: {{ .Values.triageBot.port }} }
+          env:
+            - { name: APP_ENV, value: {{ .Values.config.APP_ENV | quote }} }
+            - { name: LOG_FORMAT, value: json }
+            - { name: PORT, value: {{ .Values.triageBot.port | quote }} }
+            - { name: GITHUB_REPO, value: {{ .Values.triageBot.githubRepo | quote }} }
+            - { name: PROMETHEUS_URL, value: {{ .Values.triageBot.prometheusUrl | quote }} }
+            - { name: LOKI_URL, value: {{ .Values.triageBot.lokiUrl | quote }} }
+            - { name: RUNBOOK_BASE_URL, value: {{ .Values.triageBot.runbookBaseUrl | quote }} }
+            - { name: LLM_PROVIDER, value: {{ .Values.config.LLM_PROVIDER | quote }} }
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "WEBHOOK_TOKEN") | nindent 12 }}
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "GITHUB_TOKEN" "optional" true) | nindent 12 }}
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "ANTHROPIC_API_KEY" "optional" true) | nindent 12 }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.triageBot.resources | nindent 12 }}
+          securityContext:
+            {{- include "hiretrack.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 32Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  selector:
+    {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 4 }}
+  ports:
+    - { name: http, port: {{ .Values.triageBot.port }}, targetPort: http }
+{{- end }}

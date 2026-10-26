@@ -1,0 +1,130 @@
+{{- if .Values.api.enabled }}
+{{- $name := "api" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }   # never below the current capacity
+  selector:
+    matchLabels:
+      {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 8 }}
+      annotations:
+        {{- include "hiretrack.configChecksum" . | nindent 8 }}
+    spec:
+      serviceAccountName: hiretrack-{{ $name }}
+      securityContext:
+        {{- include "hiretrack.podSecurityContext" . | nindent 8 }}
+      # Spread replicas over zones, so one AZ outage leaves the API up.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 14 }}
+      # Longer than SHUTDOWN_GRACE_SECONDS (20) + the preStop sleep (5).
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: api
+          image: {{ include "hiretrack.image" (dict "root" . "repo" "hiretrack-api") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: {{ .Values.api.port }} }
+          envFrom:
+            {{- include "hiretrack.envFrom" . | nindent 12 }}
+          env:
+            - { name: PORT, value: {{ .Values.api.port | quote }} }
+            - { name: CORS_ALLOWED_ORIGINS, value: {{ .Values.api.corsAllowedOrigins | quote }} }
+            - { name: FAULT_INJECTION_RATE, value: {{ .Values.api.faultInjectionRate | quote }} }
+            - { name: ALLOW_REGISTRATION, value: "true" }
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "DB_PASSWORD") | nindent 12 }}
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "JWT_SECRET") | nindent 12 }}
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "ANTHROPIC_API_KEY" "optional" true) | nindent 12 }}
+          # Liveness never touches the DB (a DB blip must not restart every pod);
+          # readiness does, so a pod that can't reach the DB stops getting traffic.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            # Give the load balancer time to stop sending new requests before shutdown starts.
+            preStop:
+              exec: { command: ["python", "-c", "import time; time.sleep(5)"] }
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          securityContext:
+            {{- include "hiretrack.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- include "hiretrack.filesMount" . | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+        {{- include "hiretrack.filesVolume" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  selector:
+    {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 4 }}
+  ports:
+    - { name: http, port: 80, targetPort: http }
+{{- if .Values.api.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: hiretrack-{{ $name }} }
+  minReplicas: {{ .Values.api.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .Values.api.autoscaling.targetCPUUtilizationPercentage }} }
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   # don't flap after a short spike
+{{- end }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  # Node drains (Karpenter consolidation, spot interruptions) keep at least this many running.
+  minAvailable: {{ .Values.api.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 6 }}
+{{- end }}

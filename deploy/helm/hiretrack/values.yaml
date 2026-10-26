@@ -1,0 +1,138 @@
+# Default values. Environment files (values-dev.yaml, ...) override only what differs.
+# Nothing secret lives here: secrets come from the Kubernetes Secret named in existingSecret,
+# which External Secrets Operator creates from AWS SSM / Secrets Manager.
+
+image:
+  registry: ""          # e.g. <account>.dkr.ecr.<region>.amazonaws.com  ("" = local images)
+  tag: ""               # "" = Chart.appVersion. CI sets the git SHA: --set image.tag=$GITHUB_SHA
+  pullPolicy: IfNotPresent
+
+# Secret keys the pods read (each pod gets only the keys it needs, not the whole Secret):
+#   DB_PASSWORD, JWT_SECRET, WEBHOOK_TOKEN, GITHUB_TOKEN (optional), ANTHROPIC_API_KEY (optional)
+existingSecret: hiretrack-secrets
+
+# Non-secret settings shared by every Python service (rendered into one ConfigMap).
+config:
+  APP_ENV: dev
+  LOG_LEVEL: INFO
+  LOG_FORMAT: json
+  DB_HOST: ""           # the RDS endpoint (from Terraform output)
+  DB_PORT: "5432"
+  DB_NAME: hiretrack
+  DB_USER: hiretrack
+  DB_SSLMODE: require   # RDS: always TLS
+  QUEUE_BACKEND: sqs
+  SQS_QUEUE_URL: ""     # from Terraform output
+  AWS_REGION: ""
+  QUEUE_VISIBILITY_TIMEOUT_SECONDS: "60"
+  QUEUE_MAX_RECEIVES: "5"   # keep equal to the SQS redrive policy's maxReceiveCount
+  LLM_PROVIDER: none
+  PUSHGATEWAY_URL: http://prometheus-pushgateway.monitoring.svc:9091
+
+# Optional overrides for config/sources.yaml and config/skills.yaml (baked into the images).
+# Set them to change companies/skills without building a new image.
+files:
+  sourcesYaml: ""
+  skillsYaml: ""
+
+podSecurity: &podSecurity
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+api:
+  enabled: true
+  replicas: 2
+  port: 8000
+  corsAllowedOrigins: ""        # https://hiretrack.example.com
+  faultInjectionRate: "0.0"     # chaos testing, see docs/runbooks
+  resources:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits: { memory: 384Mi }   # no CPU limit: throttling hurts latency more than it helps
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    minAvailable: 1
+
+web:
+  enabled: true
+  replicas: 2
+  port: 8080
+  apiBaseUrl: ""                # what the BROWSER calls, e.g. https://hiretrack.example.com
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 64Mi }
+
+migrate:
+  enabled: true                 # Helm pre-install/pre-upgrade hook: alembic upgrade head
+
+matchScorer:
+  enabled: true
+  # Fixed replica count. With KEDA (scaling on SQS queue depth) set this to null and add a
+  # ScaledObject that targets this Deployment.
+  replicas: 1
+  opsPort: 9100
+  terminationGracePeriodSeconds: 45   # > SCORER_WAIT_SECONDS + slowest message
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }
+
+jobScout:
+  enabled: true
+  schedule: "0 */6 * * *"        # every 6 hours (UTC)
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }
+
+reminderWorker:
+  enabled: true
+  schedule: "30 3 * * *"         # 09:00 IST
+  resources:
+    requests: { cpu: 20m, memory: 96Mi }
+    limits: { memory: 192Mi }
+
+triageBot:
+  enabled: true
+  port: 8080
+  githubRepo: ""                 # "owner/name"; empty = dry run (issues only logged)
+  prometheusUrl: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+  lokiUrl: http://loki-gateway.monitoring.svc
+  runbookBaseUrl: https://github.com/Abhas16/hiretrack-platform/blob/main/docs/runbooks
+  resources:
+    requests: { cpu: 20m, memory: 96Mi }
+    limits: { memory: 192Mi }
+
+# One ServiceAccount per component, with predictable names. EKS Pod Identity associations
+# are made per (namespace, service account), so each component gets only its own IAM role:
+# scout -> sqs:SendMessage, scorer -> sqs:ReceiveMessage/DeleteMessage, others -> nothing.
+serviceAccounts:
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""                  # e.g. alb
+  annotations: {}
+  host: ""
+  tls: []
+
+monitoring:
+  serviceMonitors: true          # needs the Prometheus Operator CRDs (kube-prometheus-stack)
+  rules: true
+  dashboards: true               # ConfigMap picked up by the Grafana sidecar
+  # kube-prometheus-stack only selects ServiceMonitors/rules with its release label.
+  labels:
+    release: kube-prometheus-stack
+  slo:
+    availability: 0.995          # 99.5% of requests are not 5xx (30-day window)
+    latencyP95Seconds: 0.3
+
+networkPolicies:
+  enabled: true
+  # Namespace allowed to scrape metrics and reach triage-bot (Prometheus/Alertmanager).
+  monitoringNamespace: monitoring

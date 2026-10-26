@@ -17,6 +17,12 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY libs/hiretrack_common/pyproject.toml ./libs/hiretrack_common/
 COPY services/api/pyproject.toml ./services/api/
+# uv reads the whole workspace from uv.lock, so every member's pyproject.toml must be present
+# (only metadata: the workers' code is never copied into the API image).
+COPY services/job-scout/pyproject.toml ./services/job-scout/
+COPY services/match-scorer/pyproject.toml ./services/match-scorer/
+COPY services/reminder-worker/pyproject.toml ./services/reminder-worker/
+COPY services/triage-bot/pyproject.toml ./services/triage-bot/
 
 RUN uv sync --frozen --no-dev --no-install-workspace --package hiretrack-api
 
@@ -45,6 +51,8 @@ RUN groupadd --system --gid 10001 app \
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
+# skills.yaml for the match-profile skill picker (a ConfigMap can be mounted over it).
+COPY config /app/config
 COPY services/api/alembic.ini services/api/alembic.ini
 COPY services/api/migrations  services/api/migrations
 

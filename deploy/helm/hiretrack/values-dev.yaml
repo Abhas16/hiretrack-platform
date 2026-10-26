@@ -1,0 +1,32 @@
+# dev on EKS. Fill the empty values from `terraform output` (they are not secrets, but they
+# are account-specific, so they are not hardcoded in the chart).
+#
+#   helm upgrade --install hiretrack deploy/helm/hiretrack -n hiretrack --create-namespace \
+#     -f deploy/helm/hiretrack/values-dev.yaml --set image.tag=<git sha>
+image:
+  registry: ""            # <account>.dkr.ecr.<region>.amazonaws.com
+
+config:
+  APP_ENV: dev
+  DB_HOST: ""             # terraform output rds_endpoint
+  SQS_QUEUE_URL: ""       # terraform output sqs_queue_url
+  AWS_REGION: ""          # e.g. ap-south-1
+
+api:
+  autoscaling:
+    minReplicas: 1        # dev: save money; prod keeps 2+ across zones
+    maxReplicas: 3
+  corsAllowedOrigins: ""  # same origin behind the Ingress, so usually not needed
+
+web:
+  replicas: 1
+  apiBaseUrl: ""          # https://<your host>  (the browser calls the API through the Ingress)
+
+triageBot:
+  githubRepo: Abhas16/hiretrack-platform
+
+ingress:
+  enabled: true
+  className: ""           # alb (AWS Load Balancer Controller)
+  host: ""
+  annotations: {}         # ALB scheme/target-type/certificate annotations go here

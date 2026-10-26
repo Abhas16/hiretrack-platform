@@ -1,0 +1,37 @@
+{{- if .Values.ingress.enabled }}
+# One host: /api, /healthz... go to the API, everything else to the web app. Same origin for
+# the browser, so no CORS is needed in the cloud. The controller (e.g. AWS Load Balancer
+# Controller with className "alb") and its annotations come from values.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hiretrack
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - {{- with .Values.ingress.host }}
+      host: {{ . | quote }}
+      {{- end }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service: { name: hiretrack-api, port: { name: http } }
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: hiretrack-web, port: { name: http } }
+{{- end }}
