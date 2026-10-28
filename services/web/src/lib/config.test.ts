@@ -30,6 +30,11 @@ describe("loadConfig", () => {
     expect(config.environment).toBe("unknown");
   });
 
+  it("uses the page's origin when apiBaseUrl is empty (same-origin behind the Ingress)", async () => {
+    const config = await loadConfig(fakeFetch(200, { apiBaseUrl: "" }), "http://hiretrack.test");
+    expect(config.apiBaseUrl).toBe("http://hiretrack.test");
+  });
+
   it("fails clearly when the file is missing or invalid", async () => {
     await expect(loadConfig(fakeFetch(404, {}))).rejects.toThrow("HTTP 404");
     await expect(loadConfig(fakeFetch(200, { apiBaseUrl: "not-a-url" }))).rejects.toThrow(

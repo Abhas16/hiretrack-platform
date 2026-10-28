@@ -34,9 +34,10 @@ spec:
             - { name: http, containerPort: {{ .Values.web.port }} }
           env:
             # Written into /config.json at start-up, so one image works in every environment.
-            # Default: the Ingress host (same origin), else localhost for a local cluster.
-            {{- $hostUrl := ternary (printf "https://%s" .Values.ingress.host) "http://localhost:8000" (and .Values.ingress.enabled (ne .Values.ingress.host "")) }}
-            - { name: API_BASE_URL, value: {{ .Values.web.apiBaseUrl | default $hostUrl | quote }} }
+            # Default: "" = same origin when behind the Ingress (the browser calls the host it
+            # loaded the app from), else localhost for a local cluster without an Ingress.
+            {{- $default := ternary "" "http://localhost:8000" .Values.ingress.enabled }}
+            - { name: API_BASE_URL, value: {{ .Values.web.apiBaseUrl | default $default | quote }} }
             - { name: ENVIRONMENT, value: {{ .Values.config.APP_ENV | quote }} }
             - { name: VERSION, value: {{ include "hiretrack.tag" . | quote }} }
           livenessProbe:

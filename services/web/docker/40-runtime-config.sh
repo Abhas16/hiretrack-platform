@@ -4,7 +4,8 @@
 # Runs automatically: the nginx image executes /docker-entrypoint.d/*.sh before nginx starts.
 set -eu
 
-API_BASE_URL="${API_BASE_URL:-http://localhost:8000}"
+# Unset = local default; set but empty = same origin (the browser calls the host it loaded from).
+API_BASE_URL="${API_BASE_URL-http://localhost:8000}"
 ENVIRONMENT="${ENVIRONMENT:-local}"
 VERSION="${VERSION:-dev}"
 

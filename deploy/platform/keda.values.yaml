@@ -1,0 +1,20 @@
+# KEDA (chart 2.21.0), namespace keda.
+# Scales match-scorer on the SQS queue depth, from 0 pods (empty queue) up to N.
+# AWS credentials: Pod Identity association for keda/keda-operator, which may only call
+# sqs:GetQueueAttributes on the jobs queue. The app's TriggerAuthentication uses
+# `podIdentity.provider: aws` with `identityOwner: keda` = "use the operator's own role".
+serviceAccount:
+  operator:
+    create: true
+    name: keda-operator                # must match the Pod Identity association
+
+resources:
+  operator:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  metricServer:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  webhooks:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }

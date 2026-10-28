@@ -3,11 +3,13 @@
  *
  * The same built image runs in every environment: the container writes /config.json at
  * start-up from env vars, so the API URL is never baked into the JavaScript bundle.
+ * An empty apiBaseUrl means "same origin": the API sits behind the same host as the web app
+ * (the Ingress routes /api to it), so no URL has to be known before the load balancer exists.
  */
 import { z } from "zod";
 
 const RuntimeConfigSchema = z.object({
-  apiBaseUrl: z.url(),
+  apiBaseUrl: z.union([z.url(), z.literal("")]),
   environment: z.string().default("unknown"),
   version: z.string().default("unknown"),
 });
@@ -16,7 +18,10 @@ export type RuntimeConfig = z.infer<typeof RuntimeConfigSchema>;
 
 let current: RuntimeConfig | null = null;
 
-export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<RuntimeConfig> {
+export async function loadConfig(
+  fetchFn: typeof fetch = fetch,
+  origin: string = window.location.origin,
+): Promise<RuntimeConfig> {
   const response = await fetchFn("/config.json", { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Could not load /config.json (HTTP ${response.status})`);
@@ -25,7 +30,8 @@ export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Runtime
   if (!parsed.success) {
     throw new Error(`Invalid /config.json: ${parsed.error.issues[0]?.message ?? "unknown"}`);
   }
-  current = { ...parsed.data, apiBaseUrl: parsed.data.apiBaseUrl.replace(/\/+$/, "") };
+  const apiBaseUrl = parsed.data.apiBaseUrl || origin;
+  current = { ...parsed.data, apiBaseUrl: apiBaseUrl.replace(/\/+$/, "") };
   return current;
 }
 

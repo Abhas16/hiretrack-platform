@@ -28,6 +28,7 @@ coverage/
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 crash.log
 
 # editors / OS

@@ -1,0 +1,21 @@
+# AWS Load Balancer Controller (chart 3.6.2), namespace kube-system.
+# Turns the app's Ingress (className "alb") into an Application Load Balancer.
+# AWS credentials: EKS Pod Identity association for kube-system/aws-load-balancer-controller
+# (infra/terraform/envs/dev/pod-identity.tf), so no IRSA annotation on the ServiceAccount.
+clusterName: hiretrack-dev
+region: ap-south-1
+# The nodes block pods from the instance metadata service (hop limit 1), so the controller
+# can't look up its VPC there. Find it by tag instead (no VPC ID in Git).
+vpcTags:
+  Name: hiretrack-dev
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller   # must match the Pod Identity association
+
+replicaCount: 2                        # leader election: one active, one standby
+createIngressClassResource: true       # IngressClass "alb"
+
+resources:
+  requests: { cpu: 20m, memory: 96Mi }
+  limits: { memory: 256Mi }

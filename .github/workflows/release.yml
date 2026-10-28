@@ -1,0 +1,170 @@
+# Release to dev (GitOps): every push to main builds all 6 images for amd64 + arm64, pushes
+# them to ECR as multi-arch images tagged with the git SHA, then commits that SHA into
+# deploy/helm/hiretrack/values-dev.yaml. Argo CD sees the commit and rolls the new version out.
+#
+# The api/web workflows already ran lint, tests and Trivy on the PR; this one only ships.
+# All 6 images are built every time (not only the changed ones) so that ONE tag always
+# names a complete, consistent set; unchanged images come straight from the layer cache.
+#
+# AWS access: OIDC, no stored keys. Repo variable AWS_ROLE_ARN = terraform output
+# github_actions_role_arn. That role trusts only workflows on main of this repo.
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "infra/**"
+      - "deploy/argocd/**"
+      - "deploy/platform/**"
+      - "observability/**"
+  workflow_dispatch:           # re-release the current main by hand
+
+permissions:
+  contents: read
+
+# Releases run one after another, never in parallel, and a running one is never cancelled
+# (that could leave values-dev.yaml pointing at a half-pushed set of images).
+concurrency:
+  group: release-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+
+jobs:
+  # Build each image natively on its own architecture and push it BY DIGEST (no tag yet).
+  build:
+    name: ${{ matrix.service }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write          # lets the job ask GitHub for an OIDC token (for AWS STS)
+    strategy:
+      fail-fast: true          # one failed image = no release, stop the others early
+      matrix:
+        service: [api, web, match-scorer, job-scout, reminder-worker, triage-bot]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Which Dockerfile and context: web has its own folder, the API ships migrations,
+      # the four workers share one recipe (SERVICE build arg).
+      - id: recipe
+        run: |
+          case "${{ matrix.service }}" in
+            web) echo "context=services/web" >> "$GITHUB_OUTPUT"
+                 echo "file=services/web/Dockerfile" >> "$GITHUB_OUTPUT" ;;
+            api) echo "context=." >> "$GITHUB_OUTPUT"
+                 echo "file=services/api/Dockerfile" >> "$GITHUB_OUTPUT" ;;
+            *)   echo "context=." >> "$GITHUB_OUTPUT"
+                 echo "file=docker/python-service.Dockerfile" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ steps.recipe.outputs.context }}
+          file: ${{ steps.recipe.outputs.file }}
+          build-args: SERVICE=${{ matrix.service }}
+          platforms: linux/${{ matrix.arch }}
+          # Push the layers + manifest without a tag; the `publish` job tags the multi-arch index.
+          outputs: type=image,name=${{ steps.ecr.outputs.registry }}/hiretrack-${{ matrix.service }},push-by-digest=true,name-canonical=true,push=true
+          provenance: false    # keep the index to exactly the two platform images
+          cache-from: type=gha,scope=${{ matrix.service }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ matrix.arch }}
+
+      # Hand the digest to the publish job (one tiny file per service+arch).
+      - run: |
+          mkdir -p digests
+          echo "${{ steps.build.outputs.digest }}" > "digests/${{ matrix.arch }}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.service }}-${{ matrix.arch }}
+          path: digests/
+          retention-days: 1
+
+  # Join the amd64 + arm64 digests into one multi-arch image tagged with the git SHA.
+  publish:
+    name: publish ${{ matrix.service }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        service: [api, web, match-scorer, job-scout, reminder-worker, triage-bot]
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-${{ matrix.service }}-*
+          path: digests
+          merge-multiple: true
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: create multi-arch tag
+        env:
+          REPO: ${{ steps.ecr.outputs.registry }}/hiretrack-${{ matrix.service }}
+        run: |
+          docker buildx imagetools create -t "$REPO:$GITHUB_SHA" \
+            "$REPO@$(cat digests/amd64)" "$REPO@$(cat digests/arm64)"
+          docker buildx imagetools inspect "$REPO:$GITHUB_SHA"
+
+  # GitOps: point dev at the new tag with a commit. Argo CD does the actual deploy.
+  deploy:
+    name: deploy to dev (bump image tag)
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write          # push the tag-bump commit to main
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main              # the newest main, in case another commit landed meanwhile
+
+      - name: set image.tag in values-dev.yaml
+        run: |
+          # Replace the line `  tag: ...` under `image:` (the only 2-space `tag:` in the file).
+          sed -i -E "s|^  tag: .*|  tag: \"${GITHUB_SHA}\"   # set by CI (release.yml)|" \
+            deploy/helm/hiretrack/values-dev.yaml
+          git diff --exit-code deploy/helm/hiretrack/values-dev.yaml && echo "already at this tag" || true
+
+      # A push made with GITHUB_TOKEN does not start new workflow runs, so this can't loop.
+      - name: commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/helm/hiretrack/values-dev.yaml
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(deploy): release ${GITHUB_SHA::7} to dev"
+          git push origin HEAD:main

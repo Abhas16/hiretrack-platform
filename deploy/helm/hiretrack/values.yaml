@@ -89,6 +89,12 @@ matchScorer:
   # Fixed replica count. With KEDA (scaling on SQS queue depth) set this to null and add a
   # ScaledObject that targets this Deployment.
   replicas: 1
+  # Scale on SQS queue depth with KEDA (templates/match-scorer-keda.yaml). Needs replicas: null.
+  keda:
+    enabled: false
+    minReplicas: 0             # empty queue = no scorer pods at all
+    maxReplicas: 5
+    queueLength: "5"           # target waiting messages per pod
   opsPort: 9100
   terminationGracePeriodSeconds: 45   # > SCORER_WAIT_SECONDS + slowest message
   resources:

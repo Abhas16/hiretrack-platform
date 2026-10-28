@@ -68,7 +68,7 @@ flowchart LR
 
 Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · Pydantic v2 · uv workspace · React 18 · TypeScript ·
 Vite · TanStack Query · Tailwind · PostgreSQL · Redis Streams / Amazon SQS · Docker · Helm ·
-Argo CD · Argo Rollouts · Prometheus · Grafana · Loki · Alloy · GitHub Actions · AWS (EKS, RDS, SQS, ECR).
+Argo CD · Argo Rollouts · KEDA · External Secrets · Terraform · Prometheus · Grafana · Loki · Alloy · GitHub Actions · AWS (EKS, RDS, SQS, ECR).
 
 ## Run it locally
 
@@ -82,6 +82,13 @@ docker compose run --rm job-scout    # one scout run (real public board APIs)
 uv run python scripts/seed-data.py --with-smart-apply   # demo data + review-queue matches
 ```
 
+## Deploy to AWS
+
+Terraform builds the AWS side (VPC, EKS on Graviton spot, RDS, SQS + DLQ, ECR, SSM, Pod
+Identity roles, GitHub OIDC role); Argo CD deploys everything inside the cluster from Git; the
+`release` workflow pushes multi-arch images to ECR and bumps the tag Argo CD deploys.
+Step by step, cost (≈ $7/day) and teardown: [infra/terraform/README.md](infra/terraform/README.md).
+
 Development without containers: `make help` lists every target (`make test`, `make lint`,
 `make run-api`, `make web-dev`, ...).
 
@@ -93,10 +100,11 @@ libs/hiretrack_common/   shared models, queue abstraction, logging, metrics, ops
 config/             sources.yaml (companies to scout), skills.yaml (skill taxonomy)
 deploy/helm/        the app chart (+ SLO rules, dashboard)    deploy/README.md: AWS contract
 deploy/argocd/      AppProject, app of apps                    deploy/platform/: add-on values
+infra/terraform/    AWS: bootstrap (state bucket) + envs/dev
 docker/             shared worker Dockerfile
 docs/               runbooks/, adr/, design/
-scripts/            seed-data.py, chaos/
-.github/workflows/  api (all Python), web, helm, security
+scripts/            seed-data.py, chaos/, bootstrap-cluster.sh, teardown.sh
+.github/workflows/  api (all Python), web, helm, security, release (ECR push + GitOps tag bump)
 ```
 
 ## Decisions

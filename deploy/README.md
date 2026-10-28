@@ -14,8 +14,9 @@ docs/runbooks/              one page per alert (linked from each alert's runbook
 
 ## What the AWS side must provide (the contract)
 
-The chart contains **no AWS resources**. It expects these to exist (built with Terraform, plus
-the EKS add-ons), and takes their identifiers as values:
+The chart contains **no AWS resources**. It expects these to exist (built by
+[infra/terraform](../infra/terraform), plus the add-ons in `deploy/argocd/apps/platform-aws.yaml`),
+and takes their identifiers as values (`scripts/bootstrap-cluster.sh` fills them in):
 
 | Need | Details | Chart value |
 |---|---|---|
@@ -26,7 +27,7 @@ the EKS add-ons), and takes their identifiers as values:
 | **Pod Identity associations** (namespace `hiretrack`) | `hiretrack-job-scout` → `sqs:SendMessage`, `sqs:GetQueueAttributes`; `hiretrack-match-scorer` → `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueAttributes`, `sqs:ChangeMessageVisibility`. Others need no AWS access | (none: matched by SA name) |
 | **Ingress controller** | AWS Load Balancer Controller (`className: alb`) + ACM cert | `ingress.*` |
 | **kube-prometheus-stack** in `monitoring` (+ Pushgateway, Loki) | release label `kube-prometheus-stack`; Grafana dashboard sidecar on | `monitoring.labels`, `triageBot.*Url`, `config.PUSHGATEWAY_URL` |
-| Optional **KEDA** | ScaledObject on `hiretrack-match-scorer` with an `aws-sqs-queue` trigger (Pod Identity auth); then set `matchScorer.replicas: null` | `matchScorer.replicas` |
+| **KEDA** | the chart's ScaledObject scales `hiretrack-match-scorer` 0..5 on queue depth; the operator reads the queue with its own Pod Identity role (`keda/keda-operator` → `sqs:GetQueueAttributes`) | `matchScorer.keda.enabled`, `matchScorer.replicas: null` |
 
 ## Deploy
 
