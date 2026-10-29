@@ -49,7 +49,9 @@ terraform -chdir=infra/terraform/envs/dev apply dev.tfplan
 
 # 3. kubeconfig, values-dev.yaml, Argo CD, root app
 scripts/bootstrap-cluster.sh
-#    then: commit + push values-dev.yaml, set the GitHub variable AWS_ROLE_ARN, run "release"
+#    then: commit + push values-dev.yaml, set the GitHub variables AWS_ROLE_ARN and
+#    DEPLOY_ENABLED=true, run "release". Before teardown set DEPLOY_ENABLED=false, so pushes
+#    to main skip the release instead of failing at the AWS login.
 ```
 
 ## Cost (ap-south-1, on-demand prices, approximate)
