@@ -41,10 +41,28 @@ resource "aws_s3_bucket_versioning" "state" {
   versioning_configuration { status = "Enabled" }
 }
 
+# Customer-managed KMS key for the state: we control its key policy and rotation, and every
+# decrypt shows up in CloudTrail (who read the state, and when).
+resource "aws_kms_key" "state" {
+  description             = "Encrypts the HireTrack Terraform state bucket"
+  enable_key_rotation     = true # new key material every year, old data still readable
+  deletion_window_in_days = 7
+}
+
+resource "aws_kms_alias" "state" {
+  name          = "alias/hiretrack-tfstate"
+  target_key_id = aws_kms_key.state.key_id
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
   bucket = aws_s3_bucket.state.id
   rule {
-    apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.state.arn
+    }
+    # S3 Bucket Key: S3 reuses a data key per bucket, so far fewer (billed) KMS calls.
+    bucket_key_enabled = true
   }
 }
 

@@ -1,7 +1,7 @@
-# Optional: copy to terraform.tfvars (git-ignored) to override the defaults in variables.tf.
+# Copy to terraform.tfvars (git-ignored) and set your values. The first one is required.
 
-# Only your IP may reach the Kubernetes API (curl -s https://checkip.amazonaws.com).
-# cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
+# Required: only your IP may reach the Kubernetes API (curl -s https://checkip.amazonaws.com).
+cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]   # REQUIRED
 
 # On-demand nodes instead of spot (more expensive, never reclaimed).
 # node_capacity_type = "ON_DEMAND"

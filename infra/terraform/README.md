@@ -43,6 +43,7 @@ terraform -chdir=infra/terraform/bootstrap apply
 # 2. the platform (~20 min, EKS is the slow part)
 terraform -chdir=infra/terraform/envs/dev init \
   -backend-config="bucket=$(terraform -chdir=infra/terraform/bootstrap output -raw state_bucket)"
+cp infra/terraform/envs/dev/terraform.tfvars.example infra/terraform/envs/dev/terraform.tfvars  # set your IP
 terraform -chdir=infra/terraform/envs/dev plan -out=dev.tfplan
 terraform -chdir=infra/terraform/envs/dev apply dev.tfplan
 

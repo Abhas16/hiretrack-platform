@@ -25,10 +25,17 @@ variable "kubernetes_version" {
   default     = "1.35"
 }
 
+# No default on purpose: the EKS API must never be open to the whole internet. Set your own IP
+# in terraform.tfvars (git-ignored):  cluster_endpoint_public_access_cidrs = ["x.x.x.x/32"]
+# (curl -s https://checkip.amazonaws.com). Home IP changed -> update it and apply again.
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "Who may reach the EKS API endpoint. Narrow it to your own IP (x.x.x.x/32) if you can."
+  description = "CIDRs allowed to reach the public EKS API endpoint (e.g. your IP as x.x.x.x/32)."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+
+  validation {
+    condition     = length(var.cluster_endpoint_public_access_cidrs) > 0 && !contains(var.cluster_endpoint_public_access_cidrs, "0.0.0.0/0")
+    error_message = "Use specific CIDRs (your IP as x.x.x.x/32), never 0.0.0.0/0."
+  }
 }
 
 variable "node_instance_types" {

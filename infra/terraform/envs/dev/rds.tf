@@ -71,6 +71,8 @@ resource "aws_db_parameter_group" "main" {
   parameter {
     name  = "rds.force_ssl"
     value = "1"
+    # What RDS records for this parameter; without it every plan shows a fake change.
+    apply_method = "pending-reboot"
   }
   # Log statements slower than 500 ms (shows up in CloudWatch / the RDS console).
   parameter {

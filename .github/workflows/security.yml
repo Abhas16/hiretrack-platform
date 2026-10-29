@@ -38,8 +38,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Print everything HIGH+ for the reviewer, then fail only on CRITICAL vulnerabilities
-      # (with a fix available) and HIGH+ misconfigurations.
+      # Print everything HIGH+ for the reviewer (accepted risks included, so they stay visible),
+      # then fail only on CRITICAL vulnerabilities (with a fix available) and HIGH+
+      # misconfigurations that are not documented accepted risks in .trivyignore.yaml.
       - name: report (HIGH, CRITICAL)
         run: >-
           docker run --rm -v "$PWD:/repo:ro"
@@ -51,4 +52,4 @@ jobs:
           docker run --rm -v "$PWD:/repo:ro" $IMAGE fs --quiet --scanners vuln \
             --severity CRITICAL --ignore-unfixed --exit-code 1 /repo
           docker run --rm -v "$PWD:/repo:ro" $IMAGE fs --quiet --scanners misconfig,secret \
-            --severity HIGH,CRITICAL --exit-code 1 /repo
+            --ignorefile /repo/.trivyignore.yaml --severity HIGH,CRITICAL --exit-code 1 /repo
