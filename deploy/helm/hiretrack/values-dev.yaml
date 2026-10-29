@@ -4,13 +4,13 @@
 # Argo CD deploys this file (deploy/argocd/apps/hiretrack-dev.yaml). image.tag is changed by
 # CI (.github/workflows/release.yml) after it pushed all images for a commit on main.
 image:
-  registry: ""            # terraform output ecr_registry
+  registry: 100944065595.dkr.ecr.ap-south-1.amazonaws.com
   tag: ""                 # set by CI: the git SHA of the last released commit
 
 config:
   APP_ENV: dev
-  DB_HOST: ""             # terraform output rds_endpoint
-  SQS_QUEUE_URL: ""       # terraform output sqs_queue_url
+  DB_HOST: hiretrack-dev.cv2eqmqs211a.ap-south-1.rds.amazonaws.com
+  SQS_QUEUE_URL: https://sqs.ap-south-1.amazonaws.com/100944065595/hiretrack-dev-jobs
   AWS_REGION: ap-south-1
 
 api:
