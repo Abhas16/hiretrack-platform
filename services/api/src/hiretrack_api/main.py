@@ -16,6 +16,8 @@ from hiretrack_api.controllers import (
     companies,
     contacts,
     interviews,
+    match_profile,
+    matches,
     notes,
     ops,
     practice,
@@ -31,6 +33,7 @@ from hiretrack_api.middleware.request_id import HEADER as REQUEST_ID_HEADER
 from hiretrack_api.middleware.request_id import RequestIdMiddleware
 from hiretrack_common.db import create_db_engine, create_session_factory, ping
 from hiretrack_common.logging import configure_logging
+from hiretrack_common.skills import SkillTaxonomy
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_db_engine(settings)
         app.state.session_factory = create_session_factory(engine)
-        # Phase 3 adds a "queue" check here.
+        # Only the database: the API never talks to the queue (the scout publishes, the scorer
+        # consumes), so a queue outage must not take the API out of the load balancer.
         app.state.readiness_checks = {"database": partial(ping, engine)}
         logger.info("api started", extra={"env": settings.app_env, "version": __version__})
         yield
@@ -60,6 +64,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.interviewer = build_interviewer(settings)
+    app.state.skill_names = _load_skill_names(settings)
     register_exception_handlers(app)
 
     # Middleware runs outermost-last-added: CORS -> request ID -> metrics -> fault injection.
@@ -72,7 +77,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,
-            allow_methods=["GET", "POST", "PATCH", "DELETE"],
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
             allow_headers=["Authorization", "Content-Type", REQUEST_ID_HEADER],
             expose_headers=[REQUEST_ID_HEADER, "Content-Disposition"],
         )
@@ -90,7 +95,21 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         resume_variants,
         analytics,
         practice,
+        matches,
+        match_profile,
     ):
         api.include_router(module.router)
     app.include_router(api)
     return app
+
+
+def _load_skill_names(settings: ApiSettings) -> list[str]:
+    """The skill picker is a convenience: a missing taxonomy file must not stop the API."""
+    try:
+        return SkillTaxonomy.load(settings.skills_file).names
+    except (OSError, ValueError) as exc:
+        logger.warning(
+            "skill taxonomy not loaded",
+            extra={"path": str(settings.skills_file), "error": str(exc)},
+        )
+        return []

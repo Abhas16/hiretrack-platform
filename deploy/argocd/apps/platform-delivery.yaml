@@ -1,0 +1,44 @@
+# Delivery and scaling add-ons. (AWS-specific add-ons such as the Load Balancer Controller,
+# External Secrets, Karpenter and KEDA get their own Applications next to this file.)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"   # Rollout/AnalysisTemplate CRDs before the app
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-rollouts
+      targetRevision: 2.43.8
+      helm:
+        releaseName: argo-rollouts
+        valueFiles: [$values/deploy/platform/argo-rollouts.values.yaml]
+    - repoURL: https://github.com/Abhas16/hiretrack-platform.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: argo-rollouts }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"   # the HPA needs CPU metrics
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    chart: metrics-server
+    targetRevision: 3.14.0
+  destination: { server: https://kubernetes.default.svc, namespace: kube-system }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

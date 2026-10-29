@@ -1,0 +1,51 @@
+# Argo CD (chart 10.11.1). Installed ONCE by hand (bootstrap); after that Argo CD manages
+# everything else from Git, including its own apps. Namespace: argocd.
+#
+#   helm upgrade --install argocd argo/argo-cd --version 10.11.1 -n argocd --create-namespace \
+#     -f deploy/platform/argo-cd.values.yaml
+configs:
+  params:
+    server.insecure: true        # TLS ends at the load balancer / port-forward in dev
+  cm:
+    # App of apps: without a health check for Application objects, Argo CD treats a child app
+    # as healthy as soon as it exists, so sync waves wouldn't wait for the CRDs to be installed.
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then hs.message = obj.status.health.message end
+      end
+      return hs
+    # Show resource health for Argo Rollouts objects too.
+    resource.customizations.health.argoproj.io_Rollout: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.phase ~= nil then
+        if obj.status.phase == "Healthy" then hs.status = "Healthy" end
+        if obj.status.phase == "Degraded" then hs.status = "Degraded" end
+        if obj.status.phase == "Paused" then hs.status = "Suspended" end
+        hs.message = obj.status.message or ""
+      end
+      return hs
+
+dex:
+  enabled: false                 # no SSO in dev; log in with the initial admin password
+
+notifications:
+  enabled: false
+
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+server:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+repoServer:
+  resources:
+    requests: { cpu: 20m, memory: 128Mi }
+redis:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }

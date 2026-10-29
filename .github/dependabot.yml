@@ -33,6 +33,7 @@ updates:
     directories:
       - "/services/api"
       - "/services/web"
+      - "/docker"
     schedule:
       interval: "weekly"
       day: "monday"

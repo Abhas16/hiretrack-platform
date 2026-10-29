@@ -1,0 +1,43 @@
+# The app itself, from this repo's chart + values-dev.yaml.
+# CI's last step changes image.tag in values-dev.yaml (a commit on main); Argo CD sees the new
+# commit and syncs. Nobody runs `helm upgrade` or `kubectl apply` against the cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hiretrack-dev
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"    # after monitoring CRDs and Argo Rollouts
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  source:
+    repoURL: https://github.com/Abhas16/hiretrack-platform.git
+    targetRevision: main
+    path: deploy/helm/hiretrack
+    helm:
+      releaseName: hiretrack
+      valueFiles: [values-dev.yaml]
+      # The canary needs the Argo Rollouts controller (installed by platform-delivery.yaml).
+      valuesObject:
+        api:
+          canary:
+            enabled: true
+  destination: { server: https://kubernetes.default.svc, namespace: hiretrack }
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true             # a manual kubectl edit is reverted to what Git says (drift)
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff: { duration: 30s, factor: 2, maxDuration: 5m }
+  # The HPA owns the replica count; don't report it as drift.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers: [/spec/replicas]
+    - group: apps
+      kind: Deployment
+      jsonPointers: [/spec/replicas]

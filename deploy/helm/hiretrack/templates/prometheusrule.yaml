@@ -1,0 +1,128 @@
+{{- if .Values.monitoring.rules }}
+{{- $ns := .Release.Namespace }}
+{{- $slo := .Values.monitoring.slo }}
+{{- /* subf, not sub: sprig's sub works on integers and would turn 1 - 0.995 into 1. */ -}}
+{{- $budget := round (subf 1.0 $slo.availability) 6 }}
+{{- $runbooks := .Values.triageBot.runbookBaseUrl }}
+# SLOs as code.
+#   Availability: {{ mulf $slo.availability 100 }}% of API requests are not 5xx (30-day window)
+#   Latency:      p95 under {{ $slo.latencyP95Seconds }}s
+# Error-budget alerts use multi-window burn rates (Google SRE workbook): fast burn pages,
+# slow burn opens a ticket. A short window must also be burning, so alerts stop quickly
+# after recovery.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hiretrack
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+    {{- toYaml .Values.monitoring.labels | nindent 4 }}
+spec:
+  groups:
+    - name: hiretrack.slo.recording
+      interval: 30s
+      rules:
+        {{- range $window := list "5m" "30m" "1h" "6h" }}
+        - record: hiretrack:api_error_ratio:rate{{ $window }}
+          expr: |
+            sum(rate(http_requests_total{namespace="{{ $ns }}", route=~"/api/.*", status=~"5.."}[{{ $window }}]))
+            /
+            sum(rate(http_requests_total{namespace="{{ $ns }}", route=~"/api/.*"}[{{ $window }}]))
+        {{- end }}
+        - record: hiretrack:api_latency_p95:5m
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{namespace="{{ $ns }}", route=~"/api/.*"}[5m])))
+
+    - name: hiretrack.slo.alerts
+      rules:
+        - alert: ApiErrorBudgetFastBurn
+          # 14.4x burn = 2% of a 30-day budget gone in 1 hour.
+          expr: |
+            hiretrack:api_error_ratio:rate1h > (14.4 * {{ $budget }})
+            and
+            hiretrack:api_error_ratio:rate5m > (14.4 * {{ $budget }})
+          for: 2m
+          labels: { severity: critical, namespace: {{ $ns }}, app: api }
+          annotations:
+            summary: API is burning its error budget fast
+            description: '{{ "{{" }} $value | humanizePercentage {{ "}}" }} of API requests fail (5xx). At this rate the 30-day budget is gone in ~2 days.'
+            runbook_url: {{ $runbooks }}/ApiErrorBudgetBurn.md
+        - alert: ApiErrorBudgetSlowBurn
+          # 6x burn = 5% of the budget gone in 6 hours.
+          expr: |
+            hiretrack:api_error_ratio:rate6h > (6 * {{ $budget }})
+            and
+            hiretrack:api_error_ratio:rate30m > (6 * {{ $budget }})
+          for: 15m
+          labels: { severity: warning, namespace: {{ $ns }}, app: api }
+          annotations:
+            summary: API error budget is burning steadily
+            description: '{{ "{{" }} $value | humanizePercentage {{ "}}" }} of API requests fail over 6h.'
+            runbook_url: {{ $runbooks }}/ApiErrorBudgetBurn.md
+        - alert: ApiLatencyP95High
+          expr: hiretrack:api_latency_p95:5m > {{ $slo.latencyP95Seconds }}
+          for: 10m
+          labels: { severity: warning, namespace: {{ $ns }}, app: api }
+          annotations:
+            summary: API p95 latency above {{ $slo.latencyP95Seconds }}s
+            description: 'p95 is {{ "{{" }} $value | humanizeDuration {{ "}}" }} (SLO {{ $slo.latencyP95Seconds }}s).'
+            runbook_url: {{ $runbooks }}/ApiLatencyP95High.md
+        - alert: ApiNoReadyPods
+          # Pod readiness (not Deployment status), so it also works when the API is a Rollout.
+          expr: sum(kube_pod_status_ready{namespace="{{ $ns }}", condition="true", pod=~"hiretrack-api-.*"}) < 1
+          for: 2m
+          labels: { severity: critical, namespace: {{ $ns }}, app: api }
+          annotations:
+            summary: No API pod is ready
+            runbook_url: {{ $runbooks }}/ApiNoReadyPods.md
+
+    - name: hiretrack.workers
+      rules:
+        - alert: ScorerMessagesFailing
+          expr: sum(increase(queue_messages_failed_total{namespace="{{ $ns }}"}[15m])) > 5
+          for: 5m
+          labels: { severity: warning, namespace: {{ $ns }}, app: match-scorer }
+          annotations:
+            summary: match-scorer keeps failing to process queue messages
+            description: '{{ "{{" }} $value {{ "}}" }} failed attempts in 15 minutes. Repeated failures end up in the dead-letter queue.'
+            runbook_url: {{ $runbooks }}/ScorerMessagesFailing.md
+        - alert: ScorerNotReady
+          expr: sum(kube_deployment_status_replicas_available{namespace="{{ $ns }}", deployment="hiretrack-match-scorer"}) < 1 and on() sum(kube_deployment_spec_replicas{namespace="{{ $ns }}", deployment="hiretrack-match-scorer"}) > 0
+          for: 10m
+          labels: { severity: warning, namespace: {{ $ns }}, app: match-scorer }
+          annotations:
+            summary: match-scorer has replicas scheduled but none is ready (DB or queue down?)
+            runbook_url: {{ $runbooks }}/ScorerMessagesFailing.md
+        - alert: ScoutRunsStale
+          # Runs every 6h; two missed runs in a row.
+          expr: time() - max(scout_last_success_timestamp) > 13 * 3600
+          for: 10m
+          labels: { severity: warning, namespace: {{ $ns }}, app: job-scout }
+          annotations:
+            summary: job-scout has not succeeded for 13 hours
+            runbook_url: {{ $runbooks }}/ScoutRunsStale.md
+        - alert: ScoutSourceFailing
+          # The Pushgateway keeps the LAST run's values, so "> 0 for 13h" means the same board
+          # failed in every run for ~3 runs (every 6h) in a row: its slug probably changed.
+          expr: max by (source) (scout_source_errors_total) > 0
+          for: 13h
+          labels: { severity: info, namespace: {{ $ns }}, app: job-scout }
+          annotations:
+            summary: 'A {{ "{{" }} $labels.source {{ "}}" }} board has failed 3 scout runs in a row'
+            runbook_url: {{ $runbooks }}/ScoutRunsStale.md
+        - alert: ReminderWorkerStale
+          expr: time() - max(reminder_worker_last_success_timestamp) > 26 * 3600
+          for: 10m
+          labels: { severity: warning, namespace: {{ $ns }}, app: reminder-worker }
+          annotations:
+            summary: reminder-worker has not succeeded for 26 hours
+            runbook_url: {{ $runbooks }}/ReminderWorkerStale.md
+        - alert: PodCrashLooping
+          expr: sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}"}[15m])) > 3
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Pod {{ "{{" }} $labels.pod {{ "}}" }} restarted more than 3 times in 15 minutes'
+            runbook_url: {{ $runbooks }}/PodCrashLooping.md
+{{- end }}

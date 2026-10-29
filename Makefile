@@ -4,6 +4,7 @@
 ALEMBIC := uv run alembic -c services/api/alembic.ini
 
 .PHONY: help install lint format typecheck test test-unit test-integration migrate migration run-api
+.PHONY: run-scout run-scorer run-reminders run-triage seed
 .PHONY: web-install web-dev web-check web-build
 
 help: ## Show targets
@@ -21,7 +22,7 @@ format: ## Auto-format and auto-fix lint
 	uv run ruff check --fix .
 
 typecheck: ## mypy (strict) on application code
-	uv run mypy libs/hiretrack_common/src services/api/src
+	uv run mypy libs/hiretrack_common/src services/api/src services/job-scout/src services/match-scorer/src services/reminder-worker/src services/triage-bot/src
 
 test-unit: ## Fast tests, no Docker needed
 	uv run pytest -m "not integration"
@@ -40,6 +41,22 @@ migration: ## Create a migration from model changes: make migration m="add salar
 
 run-api: ## Run the API locally with auto-reload on http://localhost:8000 (docs at /docs)
 	uv run uvicorn hiretrack_api.main:create_app --factory --reload --port 8000
+
+# Smart Apply workers. Need Postgres + Redis running (QUEUE_BACKEND=redis, REDIS_URL in .env).
+run-scout: ## One job-scout run: fetch boards in config/sources.yaml, store + queue new jobs
+	uv run python -m job_scout
+
+run-scorer: ## Run the match-scorer worker (Ctrl+C to stop); ops endpoints on :9100
+	uv run python -m match_scorer
+
+run-reminders: ## One reminder-worker run: follow-ups for APPLIED apps quiet for 7+ days
+	uv run python -m reminder_worker
+
+run-triage: ## Run triage-bot on http://localhost:8080 (dry run unless GITHUB_TOKEN/GITHUB_REPO set)
+	uv run python -m triage_bot
+
+seed: ## Demo data through the running API (+ Smart Apply jobs/matches in the DB): make seed
+	uv run python scripts/seed-data.py --with-smart-apply
 
 # ---- Frontend (services/web) -------------------------------------------------------------
 WEB := cd services/web &&

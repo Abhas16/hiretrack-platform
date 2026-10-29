@@ -1,0 +1,47 @@
+{{- if and .Values.matchScorer.enabled .Values.matchScorer.keda.enabled }}
+{{- /*
+KEDA scales match-scorer on the SQS queue depth: 0 pods while the queue is empty, then one pod
+per `queueLength` waiting messages, up to maxReplicas. Needs the KEDA operator (deploy/argocd/
+apps/platform-aws.yaml) and matchScorer.replicas: null, so KEDA (through an HPA it creates)
+owns the replica count.
+*/ -}}
+{{- if not (kindIs "invalid" .Values.matchScorer.replicas) }}
+{{- fail "matchScorer.keda.enabled needs matchScorer.replicas: null (KEDA owns the replica count)" }}
+{{- end }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: hiretrack-match-scorer
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" "match-scorer") | nindent 4 }}
+spec:
+  # Read the queue depth with the KEDA operator's OWN AWS role (EKS Pod Identity association
+  # keda/keda-operator, allowed only sqs:GetQueueAttributes), not the scorer's role.
+  podIdentity:
+    provider: aws
+    identityOwner: keda
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: hiretrack-match-scorer
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" "match-scorer") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: hiretrack-match-scorer
+  minReplicaCount: {{ .Values.matchScorer.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.matchScorer.keda.maxReplicas }}
+  pollingInterval: 15        # seconds between queue-depth checks
+  cooldownPeriod: 300        # wait 5 min of an empty queue before scaling to 0
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: hiretrack-match-scorer
+      metadata:
+        queueURL: {{ required "config.SQS_QUEUE_URL is required with KEDA" .Values.config.SQS_QUEUE_URL | quote }}
+        awsRegion: {{ required "config.AWS_REGION is required with KEDA" .Values.config.AWS_REGION | quote }}
+        queueLength: {{ .Values.matchScorer.keda.queueLength | quote }}
+        # Count in-flight messages too, so pods aren't removed while they still work on some.
+        scaleOnInFlight: "true"
+{{- end }}

@@ -1,0 +1,4 @@
+# Who must review changes to which paths (GitHub requests their review automatically).
+*                     @Abhas16
+/deploy/              @Abhas16
+/.github/workflows/   @Abhas16

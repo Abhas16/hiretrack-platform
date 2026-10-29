@@ -1,0 +1,19 @@
+[project]
+name = "match-scorer"
+version = "0.1.0"
+description = "HireTrack match-scorer: queue worker that scores new jobs against user profiles."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "hiretrack-common",
+    "anthropic==1.11.0",
+]
+
+[project.scripts]
+match-scorer = "match_scorer.__main__:main"
+
+[tool.uv.sources]
+hiretrack-common = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"

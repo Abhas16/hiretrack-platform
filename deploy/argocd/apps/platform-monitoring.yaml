@@ -1,0 +1,104 @@
+# Observability add-ons. Sync waves order them: CRD owners first (-2), then what uses them.
+# Each app uses two sources: the upstream chart, and this repo (ref: values) for our values file.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"   # installs the ServiceMonitor/PrometheusRule CRDs
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 92.13.1
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles: [$values/deploy/platform/kube-prometheus-stack.values.yaml]
+    - repoURL: https://github.com/Abhas16/hiretrack-platform.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: monitoring }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+      # The Prometheus CRDs are too big for client-side apply's last-applied annotation.
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki
+      targetRevision: 7.5.0
+      helm:
+        releaseName: loki
+        valueFiles: [$values/deploy/platform/loki.values.yaml]
+    - repoURL: https://github.com/Abhas16/hiretrack-platform.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: monitoring }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.14.3
+      helm:
+        releaseName: alloy
+        valueFiles: [$values/deploy/platform/alloy.values.yaml]
+    - repoURL: https://github.com/Abhas16/hiretrack-platform.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: monitoring }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-pushgateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: hiretrack
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: prometheus-pushgateway
+      targetRevision: 3.9.1
+      helm:
+        releaseName: prometheus-pushgateway
+        valueFiles: [$values/deploy/platform/pushgateway.values.yaml]
+    - repoURL: https://github.com/Abhas16/hiretrack-platform.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: monitoring }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

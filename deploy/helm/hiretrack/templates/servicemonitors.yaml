@@ -1,0 +1,28 @@
+{{- if .Values.monitoring.serviceMonitors }}
+{{- /* Tell the Prometheus Operator which Services to scrape. CronJobs push instead. */ -}}
+{{- $targets := list
+  (dict "name" "api" "port" "http" "enabled" .Values.api.enabled)
+  (dict "name" "match-scorer" "port" "ops" "enabled" .Values.matchScorer.enabled)
+  (dict "name" "triage-bot" "port" "http" "enabled" .Values.triageBot.enabled)
+}}
+{{- range $t := $targets }}
+{{- if $t.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hiretrack-{{ $t.name }}
+  labels:
+    {{- include "hiretrack.labels" $ | nindent 4 }}
+    {{- toYaml $.Values.monitoring.labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "hiretrack.selectorLabels" (dict "name" $t.name) | nindent 6 }}
+  endpoints:
+    - port: {{ $t.port }}
+      path: /metrics
+      interval: 30s
+{{- end }}
+{{- end }}
+{{- end }}

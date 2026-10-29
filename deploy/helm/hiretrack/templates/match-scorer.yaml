@@ -1,0 +1,77 @@
+{{- if .Values.matchScorer.enabled }}
+{{- $name := "match-scorer" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  {{- if not (kindIs "invalid" .Values.matchScorer.replicas) }}
+  # Omitted when replicas is null, so an autoscaler (KEDA) owns the count instead.
+  replicas: {{ .Values.matchScorer.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 8 }}
+      annotations:
+        {{- include "hiretrack.configChecksum" . | nindent 8 }}
+    spec:
+      serviceAccountName: hiretrack-{{ $name }}
+      securityContext:
+        {{- include "hiretrack.podSecurityContext" . | nindent 8 }}
+      # SIGTERM -> finish the current message -> exit. Must exceed the long-poll wait plus
+      # the slowest message, or the message is redelivered (harmless, but a wasted retry).
+      terminationGracePeriodSeconds: {{ .Values.matchScorer.terminationGracePeriodSeconds }}
+      containers:
+        - name: match-scorer
+          image: {{ include "hiretrack.image" (dict "root" . "repo" "hiretrack-match-scorer") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: ops, containerPort: {{ .Values.matchScorer.opsPort }} }
+          envFrom:
+            {{- include "hiretrack.envFrom" . | nindent 12 }}
+          env:
+            - { name: OPS_PORT, value: {{ .Values.matchScorer.opsPort | quote }} }
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "DB_PASSWORD") | nindent 12 }}
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "ANTHROPIC_API_KEY" "optional" true) | nindent 12 }}
+          # /healthz is a heartbeat from the worker loop: a stuck loop gets the pod restarted.
+          livenessProbe:
+            httpGet: { path: /healthz, port: ops }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /readyz, port: ops }
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.matchScorer.resources | nindent 12 }}
+          securityContext:
+            {{- include "hiretrack.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- include "hiretrack.filesMount" . | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+        {{- include "hiretrack.filesVolume" . | nindent 8 }}
+---
+# Headless-style Service only for Prometheus to find the pods (/metrics on the ops port).
+apiVersion: v1
+kind: Service
+metadata:
+  name: hiretrack-{{ $name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" $name) | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "hiretrack.selectorLabels" (dict "name" $name) | nindent 4 }}
+  ports:
+    - { name: ops, port: {{ .Values.matchScorer.opsPort }}, targetPort: ops }
+{{- end }}

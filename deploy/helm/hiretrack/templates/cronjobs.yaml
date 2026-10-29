@@ -1,0 +1,64 @@
+{{- /*
+job-scout and reminder-worker: run, push metrics to the Pushgateway, exit.
+concurrencyPolicy Forbid: a slow run is never overlapped by the next one (both are idempotent
+anyway; this just avoids wasted work and double load on the job boards).
+*/ -}}
+{{- $jobs := list
+  (dict "name" "job-scout" "values" .Values.jobScout "secrets" (list "DB_PASSWORD"))
+  (dict "name" "reminder-worker" "values" .Values.reminderWorker "secrets" (list "DB_PASSWORD"))
+}}
+{{- range $job := $jobs }}
+{{- if $job.values.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hiretrack-{{ $job.name }}
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" $ "name" $job.name) | nindent 4 }}
+spec:
+  schedule: {{ $job.values.schedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600       # if the controller was down at the scheduled time
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800    # a hung run is killed (and alerts via last-success)
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            {{- include "hiretrack.componentLabels" (dict "root" $ "name" $job.name) | nindent 12 }}
+          annotations:
+            {{- include "hiretrack.configChecksum" $ | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: hiretrack-{{ $job.name }}
+          securityContext:
+            {{- include "hiretrack.podSecurityContext" $ | nindent 12 }}
+          containers:
+            - name: {{ $job.name }}
+              image: {{ include "hiretrack.image" (dict "root" $ "repo" (printf "hiretrack-%s" $job.name)) }}
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              envFrom:
+                {{- include "hiretrack.envFrom" $ | nindent 16 }}
+              env:
+                {{- range $key := $job.secrets }}
+                {{- include "hiretrack.secretEnv" (dict "root" $ "key" $key) | nindent 16 }}
+                {{- end }}
+              resources:
+                {{- toYaml $job.values.resources | nindent 16 }}
+              securityContext:
+                {{- include "hiretrack.containerSecurityContext" $ | nindent 16 }}
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+                {{- include "hiretrack.filesMount" $ | nindent 16 }}
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 64Mi }
+            {{- include "hiretrack.filesVolume" $ | nindent 12 }}
+{{- end }}
+{{- end }}

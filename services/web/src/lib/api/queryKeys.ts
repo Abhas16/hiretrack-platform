@@ -3,6 +3,7 @@
  * refreshes every query under it after a change.
  */
 import type { ApplicationQuery } from "@/types/application";
+import type { MatchQuery } from "@/types/match";
 
 export const queryKeys = {
   me: ["auth", "me"] as const,
@@ -22,6 +23,12 @@ export const queryKeys = {
   },
   interviews: { upcoming: ["interviews", "upcoming"] as const },
   reminders: { open: ["reminders", "open"] as const },
+  matches: {
+    all: ["matches"] as const,
+    list: (query: MatchQuery) => ["matches", "list", query] as const,
+    profile: ["matches", "profile"] as const,
+    skills: ["matches", "skills"] as const,
+  },
   practice: {
     meta: ["practice", "meta"] as const,
     sessions: ["practice", "sessions"] as const,

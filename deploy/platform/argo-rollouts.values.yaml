@@ -1,0 +1,16 @@
+# Argo Rollouts (chart 2.43.8): the controller behind the API's canary (Rollout +
+# AnalysisTemplate in the hiretrack chart, enabled with api.canary.enabled=true).
+# Namespace: argo-rollouts.
+controller:
+  replicas: 1
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack
+
+dashboard:
+  enabled: true                  # kubectl port-forward -n argo-rollouts svc/argo-rollouts-dashboard 3100

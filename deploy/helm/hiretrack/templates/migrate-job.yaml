@@ -1,0 +1,53 @@
+{{- if .Values.migrate.enabled }}
+# Runs `alembic upgrade head` BEFORE the new pods start (Helm hook), so new code never meets
+# an old schema. If it fails, the release fails and the running version keeps serving.
+# Migrations must stay backwards compatible (expand, then contract) because old pods are still
+# running while this Job runs.
+# With Argo CD the hook annotations below become sync hooks automatically.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hiretrack-migrate
+  labels:
+    {{- include "hiretrack.componentLabels" (dict "root" . "name" "migrate") | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "hiretrack.componentLabels" (dict "root" . "name" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      # Hooks run before the release's own ServiceAccounts exist (first install), so use the
+      # namespace's default one; the Job needs no AWS or Kubernetes API access anyway.
+      serviceAccountName: default
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "hiretrack.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "hiretrack.image" (dict "root" . "repo" "hiretrack-api") }}
+          command: ["alembic", "-c", "services/api/alembic.ini", "upgrade", "head"]
+          # A hook runs before the release's ConfigMap exists, so DB settings are inline here.
+          env:
+            {{- range $key := list "DB_HOST" "DB_PORT" "DB_NAME" "DB_USER" "DB_SSLMODE" }}
+            - { name: {{ $key }}, value: {{ index $.Values.config $key | quote }} }
+            {{- end }}
+            {{- include "hiretrack.secretEnv" (dict "root" . "key" "DB_PASSWORD") | nindent 12 }}
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            {{- include "hiretrack.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

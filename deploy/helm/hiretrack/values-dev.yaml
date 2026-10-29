@@ -1,0 +1,50 @@
+# dev on EKS (infra/terraform/envs/dev). The account-specific values below come from
+# `terraform output`; they are not secrets. scripts/bootstrap-cluster.sh fills them in.
+#
+# Argo CD deploys this file (deploy/argocd/apps/hiretrack-dev.yaml). image.tag is changed by
+# CI (.github/workflows/release.yml) after it pushed all images for a commit on main.
+image:
+  registry: 100944065595.dkr.ecr.ap-south-1.amazonaws.com
+  tag: ""                 # set by CI: the git SHA of the last released commit
+
+config:
+  APP_ENV: dev
+  DB_HOST: hiretrack-dev.cv2eqmqs211a.ap-south-1.rds.amazonaws.com
+  SQS_QUEUE_URL: https://sqs.ap-south-1.amazonaws.com/100944065595/hiretrack-dev-jobs
+  AWS_REGION: ap-south-1
+
+api:
+  autoscaling:
+    minReplicas: 1        # dev: save money; prod keeps 2+ across zones
+    maxReplicas: 3
+  corsAllowedOrigins: ""  # same origin behind the Ingress, so not needed
+
+web:
+  replicas: 1
+  apiBaseUrl: ""          # "" = same origin: the browser calls /api on the host it loaded from
+
+# KEDA owns the scorer's replica count (0..5 on SQS queue depth).
+matchScorer:
+  replicas: null
+  keda:
+    enabled: true
+
+triageBot:
+  githubRepo: Abhas16/hiretrack-platform
+
+# One internet-facing ALB (AWS Load Balancer Controller). No domain yet, so plain HTTP on the
+# ALB's DNS name; with a domain: add host, an ACM certificate-arn and HTTPS listen-ports.
+ingress:
+  enabled: true
+  className: alb
+  host: ""
+  annotations:
+    alb.ingress.kubernetes.io/load-balancer-name: hiretrack-dev
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip          # send traffic straight to pod IPs
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # Both target groups: the API's /healthz, and nginx answers /healthz with the SPA (200).
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/tags: Project=hiretrack,Environment=dev

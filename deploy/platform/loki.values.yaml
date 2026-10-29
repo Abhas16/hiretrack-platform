@@ -1,0 +1,44 @@
+# Loki (chart 7.5.0) in single-binary mode: one pod, filesystem storage. Fine for dev; prod
+# would use the "simple scalable" mode with S3 for chunks. Namespace: monitoring.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false            # single tenant
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index: { prefix: loki_index_, period: 24h }
+  limits_config:
+    retention_period: 72h        # dev: 3 days of logs is plenty
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: false               # dev: emptyDir. Prod: a PVC (EBS) or S3 storage
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
+
+# The other deployment modes' components are switched off.
+read: { replicas: 0 }
+write: { replicas: 0 }
+backend: { replicas: 0 }
+
+gateway:
+  enabled: true                  # http://loki-gateway.monitoring.svc (Grafana, Alloy, triage-bot)
+
+chunksCache: { enabled: false }
+resultsCache: { enabled: false }
+minio: { enabled: false }
+lokiCanary: { enabled: false }
+test: { enabled: false }

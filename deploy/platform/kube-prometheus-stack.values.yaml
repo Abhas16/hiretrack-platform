@@ -1,0 +1,78 @@
+# kube-prometheus-stack (chart 92.13.1): Prometheus Operator, Prometheus, Alertmanager,
+# Grafana, kube-state-metrics, node-exporter. Namespace: monitoring. Sized for a dev cluster.
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    # dev: emptyDir (data is lost when the pod moves). For prod add a storageSpec with an
+    # EBS-backed StorageClass (needs the EBS CSI driver).
+    resources:
+      requests: { cpu: 200m, memory: 1Gi }
+      limits: { memory: 2Gi }
+    # Keep the default selectors: only ServiceMonitors/PrometheusRules labelled
+    # release=kube-prometheus-stack are picked up (the hiretrack chart adds that label).
+
+alertmanager:
+  alertmanagerSpec:
+    # Secret in `monitoring` with key "token" = the same value as WEBHOOK_TOKEN in triage-bot.
+    # Mounted at /etc/alertmanager/secrets/triage-bot-webhook/.
+    secrets: [triage-bot-webhook]
+    resources:
+      requests: { cpu: 20m, memory: 64Mi }
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: triage-bot
+      group_by: [alertname, namespace]
+      group_wait: 30s        # wait for related alerts to arrive and send them together
+      group_interval: 5m
+      repeat_interval: 4h    # triage-bot de-duplicates repeats by fingerprint anyway
+      routes:
+        # Watchdog always fires (proves the alerting pipeline works); don't open issues for it.
+        - receiver: "null"
+          matchers: [alertname = "Watchdog"]
+        - receiver: "null"
+          matchers: [alertname = "InfoInhibitor"]
+    inhibit_rules:
+      # A critical alert hides the warning version of the same alert.
+      - source_matchers: [severity = "critical"]
+        target_matchers: [severity = "warning"]
+        equal: [alertname, namespace]
+    receivers:
+      - name: "null"
+      - name: triage-bot
+        webhook_configs:
+          - url: http://hiretrack-triage-bot.hiretrack.svc:8080/webhooks/alertmanager
+            send_resolved: true
+            max_alerts: 20
+            http_config:
+              authorization:
+                credentials_file: /etc/alertmanager/secrets/triage-bot-webhook/token
+
+grafana:
+  # Secret `grafana-admin` in `monitoring` with keys admin-user / admin-password.
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard   # the hiretrack chart's dashboard ConfigMap has this label
+      searchNamespace: ALL
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.monitoring.svc
+      access: proxy
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 64Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }

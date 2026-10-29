@@ -1,0 +1,21 @@
+# Accepted risks for the Trivy misconfiguration gate (.github/workflows/security.yml).
+# Every entry says WHY it is accepted and EXPIRES, so it gets reviewed again instead of being
+# forgotten. Anything not listed here still fails the build.
+# (Fixed instead of accepted: AWS-0132 -> KMS key for the state bucket; AWS-0041 -> the EKS
+# API only allows the CIDRs in cluster_endpoint_public_access_cidrs, never 0.0.0.0/0.)
+
+misconfigurations:
+  - id: AWS-0040
+    statement: >-
+      Public EKS API endpoint (dev), so kubectl works from a laptop without a VPN or bastion.
+      Mitigated: only the admin's IP/32 may connect (AWS-0041 fixed), every call needs IAM
+      credentials + an EKS access entry, and nodes use the private endpoint.
+      Prod: endpoint_public_access = false, access through a VPN or SSM bastion.
+    expired_at: 2027-04-30
+
+  - id: AWS-0104
+    statement: >-
+      Node security group allows all egress. Pods must reach ECR, SQS, SSM, STS, RDS and the
+      public job-board APIs (Greenhouse/Lever/Ashby), whose IPs are not fixed. Prod: VPC
+      endpoints for the AWS services + an egress proxy or AWS Network Firewall allow-list.
+    expired_at: 2027-04-30

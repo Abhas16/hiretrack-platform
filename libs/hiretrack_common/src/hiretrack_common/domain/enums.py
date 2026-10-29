@@ -58,3 +58,17 @@ class ReminderCreatedBy(StrEnum):
 class PracticeStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
+
+
+class JobSource(StrEnum):
+    """Public job-board APIs job-scout reads from (never scraped HTML)."""
+
+    GREENHOUSE = "GREENHOUSE"
+    LEVER = "LEVER"
+    ASHBY = "ASHBY"
+
+
+class MatchStatus(StrEnum):
+    NEW = "NEW"  # waiting in the review queue
+    APPROVED = "APPROVED"  # the user applied (an APPLIED application was created)
+    SKIPPED = "SKIPPED"

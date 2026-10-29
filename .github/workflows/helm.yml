@@ -1,0 +1,43 @@
+# Lint and render the Helm chart on every change to it, so a template error is caught in the PR
+# instead of during a deploy. (Helm is preinstalled on GitHub's Ubuntu runners.)
+name: helm
+
+on:
+  pull_request:
+    paths:
+      - "deploy/helm/**"
+      - ".github/workflows/helm.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/helm/**"
+      - ".github/workflows/helm.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: helm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: helm lint (defaults and dev values)
+        run: |
+          helm lint deploy/helm/hiretrack
+          helm lint deploy/helm/hiretrack -f deploy/helm/hiretrack/values-dev.yaml \
+            --set ingress.host=ci.example.com
+
+      # Render every template, including the optional ones, to catch runtime template errors.
+      - name: helm template
+        run: |
+          helm template ci deploy/helm/hiretrack -n hiretrack \
+            -f deploy/helm/hiretrack/values-dev.yaml \
+            --set ingress.host=ci.example.com \
+            --set files.sourcesYaml=x --set files.skillsYaml=y > rendered.yaml
+          echo "rendered $(grep -c '^kind:' rendered.yaml) objects"

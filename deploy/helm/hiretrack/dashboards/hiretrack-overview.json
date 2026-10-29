@@ -1,0 +1,89 @@
+{
+  "title": "HireTrack overview",
+  "uid": "hiretrack-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "tags": ["hiretrack", "slo"],
+  "panels": [
+    {
+      "type": "row", "title": "API (golden signals + SLO)", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "type": "stat", "title": "Availability (30d)", "gridPos": { "x": 0, "y": 1, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 3,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0.995 } ] } } },
+      "targets": [ { "expr": "1 - (sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\", status=~\"5..\"}[30d])) / sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[30d])))" } ]
+    },
+    {
+      "type": "stat", "title": "Error budget left (30d)", "gridPos": { "x": 6, "y": 1, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "percentunit",
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 0.25 }, { "color": "green", "value": 0.5 } ] } } },
+      "targets": [ { "expr": "1 - ((sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\", status=~\"5..\"}[30d])) / sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[30d]))) / 0.005)" } ]
+    },
+    {
+      "type": "timeseries", "title": "Requests per second by status", "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [ { "expr": "sum by (status) (rate(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[5m]))", "legendFormat": "{{status}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Error ratio (5m) vs SLO", "gridPos": { "x": 0, "y": 6, "w": 6, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "targets": [
+        { "expr": "hiretrack:api_error_ratio:rate5m", "legendFormat": "5xx ratio" },
+        { "expr": "vector(0.005)", "legendFormat": "budget (0.5%)" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "p95 latency vs SLO", "gridPos": { "x": 6, "y": 6, "w": 6, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "hiretrack:api_latency_p95:5m", "legendFormat": "p95" },
+        { "expr": "vector(0.3)", "legendFormat": "SLO 300ms" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "p95 latency by route", "gridPos": { "x": 12, "y": 9, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [ { "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[5m])))", "legendFormat": "{{route}}" } ]
+    },
+    {
+      "type": "row", "title": "Smart Apply pipeline", "gridPos": { "x": 0, "y": 17, "w": 24, "h": 1 }
+    },
+    {
+      "type": "stat", "title": "Hours since last scout success", "gridPos": { "x": 0, "y": 18, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "h", "decimals": 1,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 7 }, { "color": "red", "value": 13 } ] } } },
+      "targets": [ { "expr": "(time() - max(scout_last_success_timestamp)) / 3600" } ]
+    },
+    {
+      "type": "stat", "title": "New jobs (last scout run)", "gridPos": { "x": 6, "y": 18, "w": 6, "h": 5 },
+      "targets": [ { "expr": "sum(scout_jobs_new_total)" } ]
+    },
+    {
+      "type": "timeseries", "title": "Scorer throughput by outcome", "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "targets": [ { "expr": "sum by (outcome) (rate(scorer_jobs_processed_total{namespace=\"__NAMESPACE__\"}[5m]))", "legendFormat": "{{outcome}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Matches created vs approved (per hour)", "gridPos": { "x": 0, "y": 23, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum(increase(matches_created_total{namespace=\"__NAMESPACE__\"}[1h]))", "legendFormat": "created" },
+        { "expr": "sum(increase(matches_approved_total{namespace=\"__NAMESPACE__\"}[1h]))", "legendFormat": "approved" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Queue failures and scorer pods", "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum(increase(queue_messages_failed_total{namespace=\"__NAMESPACE__\"}[15m]))", "legendFormat": "failed attempts (15m)" },
+        { "expr": "sum(kube_deployment_status_replicas_available{namespace=\"__NAMESPACE__\", deployment=\"hiretrack-match-scorer\"})", "legendFormat": "scorer pods" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Scorer p95 processing time", "gridPos": { "x": 0, "y": 31, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [ { "expr": "histogram_quantile(0.95, sum by (le) (rate(scorer_processing_seconds_bucket{namespace=\"__NAMESPACE__\"}[10m])))", "legendFormat": "p95" } ]
+    }
+  ]
+}

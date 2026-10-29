@@ -1,0 +1,13 @@
+{{- if .Values.monitoring.dashboards }}
+# The Grafana sidecar (kube-prometheus-stack) loads every ConfigMap labelled grafana_dashboard.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hiretrack-dashboards
+  labels:
+    {{- include "hiretrack.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  hiretrack-overview.json: |-
+    {{- .Files.Get "dashboards/hiretrack-overview.json" | replace "__NAMESPACE__" .Release.Namespace | nindent 4 }}
+{{- end }}

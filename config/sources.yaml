@@ -1,0 +1,35 @@
+# Companies job-scout checks, via each job board's PUBLIC, documented JSON API only.
+#
+#   greenhouse  https://boards-api.greenhouse.io/v1/boards/<slug>/jobs?content=true
+#   lever       https://api.lever.co/v0/postings/<slug>?mode=json
+#   ashby       https://api.ashbyhq.com/posting-api/job-board/<slug>
+#
+# The slug is the last part of the company's careers URL, e.g. boards.greenhouse.io/gitlab ->
+# gitlab. Companies move between boards: if a run logs a 404 for a slug, check its careers page.
+#
+# keywords: a job is kept only if its title contains at least one of them (case-insensitive).
+# This stops the scout storing every sales and legal role. Empty list = keep everything.
+#
+# Mounted into the CronJob as a ConfigMap, so adding a company needs no new image.
+defaults:
+  keywords: [devops, platform, sre, site reliability, infrastructure, cloud, kubernetes, reliability]
+
+sources:
+  - board: greenhouse
+    slug: gitlab
+    company: GitLab
+  - board: greenhouse
+    slug: datadog
+    company: Datadog
+  - board: greenhouse
+    slug: cloudflare
+    company: Cloudflare
+  - board: lever
+    slug: palantir
+    company: Palantir
+  - board: ashby
+    slug: posthog
+    company: PostHog
+  - board: ashby
+    slug: supabase
+    company: Supabase

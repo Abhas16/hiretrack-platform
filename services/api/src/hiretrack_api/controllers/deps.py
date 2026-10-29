@@ -17,6 +17,7 @@ from hiretrack_api.repositories.application_repository import ApplicationReposit
 from hiretrack_api.repositories.company_repository import CompanyRepository
 from hiretrack_api.repositories.contact_repository import ContactRepository
 from hiretrack_api.repositories.interview_repository import InterviewRepository
+from hiretrack_api.repositories.match_repository import MatchProfileRepository, MatchRepository
 from hiretrack_api.repositories.note_repository import NoteRepository
 from hiretrack_api.repositories.practice_repository import PracticeRepository
 from hiretrack_api.repositories.reminder_repository import ReminderRepository
@@ -28,6 +29,7 @@ from hiretrack_api.services.auth_service import AuthService
 from hiretrack_api.services.company_service import CompanyService
 from hiretrack_api.services.contact_service import ContactService
 from hiretrack_api.services.interview_service import InterviewService
+from hiretrack_api.services.match_service import MatchService
 from hiretrack_api.services.note_service import NoteService
 from hiretrack_api.services.practice_service import PracticeService
 from hiretrack_api.services.reminder_service import ReminderService
@@ -125,6 +127,16 @@ def get_practice_service(session: SessionDep, request: Request) -> PracticeServi
     )
 
 
+def get_match_service(session: SessionDep) -> MatchService:
+    # One session (one transaction) shared by both services, so approve is atomic.
+    return MatchService(
+        MatchRepository(session),
+        MatchProfileRepository(session),
+        get_application_service(session),
+        UnitOfWork(session),
+    )
+
+
 ApplicationServiceDep = Annotated[ApplicationService, Depends(get_application_service)]
 CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]
 ResumeVariantServiceDep = Annotated[ResumeVariantService, Depends(get_resume_variant_service)]
@@ -134,3 +146,4 @@ ContactServiceDep = Annotated[ContactService, Depends(get_contact_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
 AnalyticsServiceDep = Annotated[AnalyticsService, Depends(get_analytics_service)]
 PracticeServiceDep = Annotated[PracticeService, Depends(get_practice_service)]
+MatchServiceDep = Annotated[MatchService, Depends(get_match_service)]

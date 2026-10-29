@@ -1,0 +1,12 @@
+apiVersion: v2
+name: hiretrack
+description: HireTrack job tracker + Smart Apply (API, web, queue workers, CronJobs, triage-bot)
+type: application
+# Chart version: bump when the chart itself changes.
+version: 0.1.0
+# Default image tag when values don't set one. CI overrides it with the git SHA.
+appVersion: "0.1.0"
+kubeVersion: ">=1.29.0-0"
+home: https://github.com/Abhas16/hiretrack-platform
+maintainers:
+  - name: Abhas Mukherjee
