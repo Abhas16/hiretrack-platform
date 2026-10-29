@@ -50,7 +50,8 @@ cat <<MSG
 Done. Still to do (once):
   1. Commit and push $VALUES to main (Argo CD deploys what is in Git).
   2. GitHub repo -> Settings -> Secrets and variables -> Actions -> Variables:
-       AWS_ROLE_ARN = ${ROLE_ARN}
+       AWS_ROLE_ARN   = ${ROLE_ARN}
+       DEPLOY_ENABLED = true      (set it to false again before scripts/teardown.sh)
      Then run the "release" workflow (Actions tab) to build + push the first images.
   3. Watch:  kubectl -n argocd get applications -w
      App URL: kubectl -n hiretrack get ingress hiretrack -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'

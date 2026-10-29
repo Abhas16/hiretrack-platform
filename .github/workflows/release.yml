@@ -38,6 +38,10 @@ jobs:
   # Build each image natively on its own architecture and push it BY DIGEST (no tag yet).
   build:
     name: ${{ matrix.service }} (${{ matrix.arch }})
+    # On/off switch: the dev environment is torn down between demos, and with no AWS to log in
+    # to every release would fail. Repo variable DEPLOY_ENABLED=true while it is up; anything
+    # else skips this job, and with it publish + deploy (they depend on it).
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     permissions:
