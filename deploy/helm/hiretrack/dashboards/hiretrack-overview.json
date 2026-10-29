@@ -14,13 +14,13 @@
       "type": "stat", "title": "Availability (30d)", "gridPos": { "x": 0, "y": 1, "w": 6, "h": 5 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 3,
         "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0.995 } ] } } },
-      "targets": [ { "expr": "1 - (sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\", status=~\"5..\"}[30d])) / sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[30d])))" } ]
+      "targets": [ { "expr": "1 - ((sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\", status=~\"5..\"}[30d])) or vector(0)) / sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[30d])))" } ]
     },
     {
       "type": "stat", "title": "Error budget left (30d)", "gridPos": { "x": 6, "y": 1, "w": 6, "h": 5 },
       "fieldConfig": { "defaults": { "unit": "percentunit",
         "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 0.25 }, { "color": "green", "value": 0.5 } ] } } },
-      "targets": [ { "expr": "1 - ((sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\", status=~\"5..\"}[30d])) / sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[30d]))) / 0.005)" } ]
+      "targets": [ { "expr": "1 - (((sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\", status=~\"5..\"}[30d])) or vector(0)) / sum(increase(http_requests_total{namespace=\"__NAMESPACE__\", route=~\"/api/.*\"}[30d]))) / 0.005)" } ]
     },
     {
       "type": "timeseries", "title": "Requests per second by status", "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
