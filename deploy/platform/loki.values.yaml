@@ -24,7 +24,15 @@ loki:
 singleBinary:
   replicas: 1
   persistence:
-    enabled: false               # dev: emptyDir. Prod: a PVC (EBS) or S3 storage
+    enabled: false               # dev: emptyDir below. Prod: a PVC (EBS) or S3 storage
+  # With persistence off, chart 7.x mounts NOTHING at Loki's data path, and the root filesystem
+  # is read-only -> "mkdir /var/loki: read-only file system". Give it a scratch volume.
+  extraVolumes:
+    - name: data
+      emptyDir: { sizeLimit: 2Gi }
+  extraVolumeMounts:
+    - name: data
+      mountPath: /var/loki
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { memory: 512Mi }

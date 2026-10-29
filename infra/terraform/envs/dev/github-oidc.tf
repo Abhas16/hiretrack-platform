@@ -2,6 +2,11 @@
 # workflow run; AWS STS swaps it for temporary credentials of the role below, but only if the
 # token says it comes from THIS repo's deploy branch.
 
+locals {
+  github_owner = split("/", var.github_repository)[0]
+  github_repo  = split("/", var.github_repository)[1]
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
@@ -21,10 +26,13 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
     # Only pushes to the deploy branch: a PR from a fork (or any other branch) can't push images.
+    # GitHub puts the owner's and repo's immutable numeric IDs in the subject:
+    #   repo:<owner>@<owner id>/<repo>@<repo id>:ref:refs/heads/main
+    # so a deleted + re-created account or repo with the same NAME still can't assume this role.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/${var.github_deploy_branch}"]
+      values   = ["repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo}@${var.github_repository_id}:ref:refs/heads/${var.github_deploy_branch}"]
     }
   }
 }

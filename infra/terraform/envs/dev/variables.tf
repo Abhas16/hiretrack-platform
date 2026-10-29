@@ -76,6 +76,20 @@ variable "github_repository" {
   default     = "Abhas16/hiretrack-platform"
 }
 
+# Public, non-secret IDs (curl -s https://api.github.com/repos/<owner>/<repo> -> .owner.id, .id).
+# They appear in the OIDC subject claim and never change, unlike names.
+variable "github_owner_id" {
+  description = "Numeric ID of the GitHub repository owner."
+  type        = number
+  default     = 74721720
+}
+
+variable "github_repository_id" {
+  description = "Numeric ID of the GitHub repository."
+  type        = number
+  default     = 1405690348
+}
+
 variable "github_deploy_branch" {
   description = "Only workflows running on this branch can assume the CI role."
   type        = string
