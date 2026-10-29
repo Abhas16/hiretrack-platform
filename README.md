@@ -13,6 +13,8 @@ You review, approve, and **you** apply on the company's site. Nothing is ever au
 [![security](https://github.com/Abhas16/hiretrack-platform/actions/workflows/security.yml/badge.svg)](.github/workflows/security.yml)
 [![release](https://github.com/Abhas16/hiretrack-platform/actions/workflows/release.yml/badge.svg)](.github/workflows/release.yml)
 
+![HireTrack dashboard](docs/screenshots/app-dashboard.jpg)
+
 ---
 
 ## At a glance
@@ -99,6 +101,15 @@ links the alert's runbook. `LLM_PROVIDER=anthropic` swaps the rules for an LLM a
 The web app is a React 18 + TypeScript single-page app: a SaaS-style dashboard with a dark
 sidebar, top-bar search, an "Add application" flow, toasts for every API result, and a
 light/dark theme.
+
+**Board:** drag cards between stages (or use the arrows). The UI moves the card instantly and
+rolls it back if the API rejects the move.
+
+![Kanban board](docs/screenshots/app-board.jpg)
+
+**Analytics:** applications per week, the funnel from saved to offer, and results by source.
+
+![Analytics](docs/screenshots/app-analytics.jpg)
 
 | Screen | What is in it |
 |---|---|
