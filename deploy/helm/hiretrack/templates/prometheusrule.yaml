@@ -25,7 +25,10 @@ spec:
         {{- range $window := list "5m" "30m" "1h" "6h" }}
         - record: hiretrack:api_error_ratio:rate{{ $window }}
           expr: |
-            sum(rate(http_requests_total{namespace="{{ $ns }}", route=~"/api/.*", status=~"5.."}[{{ $window }}]))
+            # "or vector(0)": with zero 5xx there is no 5xx series at all, and sum() of nothing is
+            # empty, not 0. Without it the ratio (and the SLO panels) show "No data" exactly when
+            # the API is healthiest.
+            (sum(rate(http_requests_total{namespace="{{ $ns }}", route=~"/api/.*", status=~"5.."}[{{ $window }}])) or vector(0))
             /
             sum(rate(http_requests_total{namespace="{{ $ns }}", route=~"/api/.*"}[{{ $window }}]))
         {{- end }}

@@ -64,6 +64,41 @@ flowchart LR
 - **Chaos-tested:** scripts for pod kill, fault injection, CPU stress, cutting DB egress and
   poison messages, each with the expected outcome written down.
 
+## See it running
+
+Deployed end to end on **AWS EKS (ap-south-1)** on 29 Oct 2026 with the code in this repo:
+Terraform → `release` workflow (multi-arch images to ECR over OIDC) → Argo CD. The
+environment is torn down after each demo to keep costs near zero, so these are the proof.
+
+**GitOps: Argo CD manages 12 apps (platform + app), all Synced and Healthy**
+
+![Argo CD applications](docs/screenshots/argocd-applications.jpg)
+
+**The app's resource tree:** API as an Argo Rollouts canary, HPA, CronJobs, and match-scorer
+scaled by a KEDA ScaledObject. Here the job-scout run has just queued jobs, so KEDA is running
+5 scorer pods. The sync bar shows the commit made by the release workflow's tag bump.
+
+![Argo CD app tree](docs/screenshots/argocd-app-tree.jpg)
+
+**SLO dashboard (Grafana):** request rate by status, error ratio against the 0.5% error budget,
+and p95 latency against the 300 ms SLO, overall and per route.
+
+![Grafana API SLO dashboard](docs/screenshots/grafana-api-slo.jpg)
+
+**Event-driven scaling:** a scout run found 137 new jobs on public Greenhouse / Lever / Ashby
+boards; KEDA scaled match-scorer **0 → 5 → 0** pods on SQS queue depth.
+
+![Grafana Smart Apply and KEDA panels](docs/screenshots/grafana-smart-apply-keda.jpg)
+
+**Structured logs (Loki):** JSON logs with a request ID on every line, collected by Alloy.
+
+![Loki logs in Grafana](docs/screenshots/grafana-loki-logs.jpg)
+
+**Prometheus:** every ServiceMonitor target is up; API request rate by status.
+
+![Prometheus targets](docs/screenshots/prometheus-targets.jpg)
+![Prometheus request rate](docs/screenshots/prometheus-request-rate.jpg)
+
 ## Tech
 
 Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · Pydantic v2 · uv workspace · React 18 · TypeScript ·
