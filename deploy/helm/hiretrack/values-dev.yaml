@@ -5,7 +5,7 @@
 # CI (.github/workflows/release.yml) after it pushed all images for a commit on main.
 image:
   registry: 100944065595.dkr.ecr.ap-south-1.amazonaws.com
-  tag: ""                 # set by CI: the git SHA of the last released commit
+  tag: "1e76bf72923f797757e105e268d9f4b289adab58"   # set by CI (release.yml)
 
 config:
   APP_ENV: dev
