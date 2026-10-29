@@ -50,9 +50,11 @@ variable "node_count" {
 }
 
 variable "db_instance_class" {
-  description = "RDS instance class (Graviton burstable for dev)."
+  # db.t4g.micro failed with "insufficient-capacity" in ap-south-1 (2026-10-28); t4g.small is
+  # the next Graviton size (~$0.04/h). Try db.t3.micro if that is short on capacity too.
+  description = "RDS instance class (burstable for dev)."
   type        = string
-  default     = "db.t4g.micro"
+  default     = "db.t4g.small"
 }
 
 variable "db_engine_version" {
