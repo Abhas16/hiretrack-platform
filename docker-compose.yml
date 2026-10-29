@@ -77,7 +77,7 @@ services:
   # ---- Smart Apply ---------------------------------------------------------------------
   # Locally the queue is Redis Streams; in AWS it is SQS (QUEUE_BACKEND=sqs). Same code.
   redis:
-    image: redis:8.2.2-alpine
+    image: redis:8.10.0-alpine
     command: ["redis-server", "--appendonly", "yes"]   # keep queued messages across restarts
     volumes:
       - redisdata:/data
