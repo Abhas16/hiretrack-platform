@@ -1,11 +1,16 @@
 # Dependabot: opens a PR every Monday when a dependency has an update.
 # Each PR runs the normal CI (api.yml / web.yml), so a breaking update shows up as a red check.
 # Minor + patch updates are grouped into ONE PR per ecosystem; majors come alone (they need reading).
+#
+# PAUSED (Nov 2026): the project is finished, so every ecosystem has open-pull-requests-limit: 0
+# (GitHub's documented way to stop version-update PRs while keeping the config). To resume,
+# delete those lines.
 version: 2
 
 updates:
   # Python packages for the whole uv workspace (one uv.lock at the repo root).
   - package-ecosystem: "uv"
+    open-pull-requests-limit: 0   # paused, see the top of the file
     directory: "/"
     schedule:
       interval: "weekly"
@@ -18,6 +23,7 @@ updates:
 
   # npm packages for the React app.
   - package-ecosystem: "npm"
+    open-pull-requests-limit: 0   # paused, see the top of the file
     directory: "/services/web"
     schedule:
       interval: "weekly"
@@ -30,6 +36,7 @@ updates:
 
   # Base images in both Dockerfiles (we pin by digest; Dependabot bumps tag + digest together).
   - package-ecosystem: "docker"
+    open-pull-requests-limit: 0   # paused, see the top of the file
     directories:
       - "/services/api"
       - "/services/web"
@@ -42,6 +49,7 @@ updates:
 
   # The postgres image in docker-compose.yml.
   - package-ecosystem: "docker-compose"
+    open-pull-requests-limit: 0   # paused, see the top of the file
     directory: "/"
     schedule:
       interval: "weekly"
@@ -51,6 +59,7 @@ updates:
 
   # Action versions in .github/workflows (we pin by SHA; Dependabot updates the SHA + the # vX comment).
   - package-ecosystem: "github-actions"
+    open-pull-requests-limit: 0   # paused, see the top of the file
     directory: "/"
     schedule:
       interval: "weekly"
@@ -61,4 +70,3 @@ updates:
       actions:
         patterns: ["*"]
 
-# Terraform gets added here in M3, once infra/ exists.
